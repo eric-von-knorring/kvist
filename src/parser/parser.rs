@@ -4,7 +4,6 @@ use crate::ast::expression::Expression;
 
 use crate::lexer::lexer::Lexer;
 use crate::token::token::{Token, TokenType};
-use crate::token::token::TokenType::RParen;
 
 #[derive(Debug)]
 pub struct Parser<'a> {
@@ -82,7 +81,6 @@ impl Parser<'_> {
 
     fn parse_expression(&mut self) -> Option<Node> {
         if self.current_token_is(TokenType::LParen) {
-            // return None;
             self.next_token();
         }
         let mut result = self.prefix_parse()?;
@@ -93,6 +91,12 @@ impl Parser<'_> {
         match self.current_token.token_type {
             TokenType::Let => self.parse_let(),
             TokenType::Int => self.parse_integer_literal(),
+            TokenType::Ident => self.parse_identifier().into(),
+            TokenType::Plus
+            | TokenType::Minus
+            | TokenType::Asterisk
+            | TokenType::Slash => self.parse_prefix_operator(),
+            TokenType::True | TokenType::False => self.parse_boolean().into(),
             _ => {
                 self.next_token();
                 None
@@ -105,18 +109,19 @@ impl Parser<'_> {
 
         self.expect_peek(TokenType::Ident)?;
 
-        let identifier_token = self.next_token();
-        let identifier = Node {
-            expression: Expression::Identifier(identifier_token.literal.clone()),
-            token: identifier_token,
-        };
+        // let identifier_token = self.next_token();
+        // let identifier = Node {
+        //     expression: Expression::Identifier(identifier_token.literal.clone()),
+        //     token: identifier_token,
+        // };
+        let identifier = self.parse_identifier();
 
-        println!("{:?}", self.current_token);
+        // println!("{:?}", self.current_token);
         // FIXME, maybe an error should be returned here.
         let value = self.parse_expression()?;
 
         // FIXME, should probably also be an error
-        if self.peek_token_is(RParen) {
+        if self.peek_token_is(TokenType::RParen) {
             self.next_token();
         }
 
@@ -124,6 +129,14 @@ impl Parser<'_> {
             expression: Expression::Let(identifier.into(), value.into()),
             token: current
         })
+    }
+
+    fn parse_identifier(&mut self) -> Node {
+        let token = self.next_token();
+        Node {
+            expression: Expression::Identifier(token.literal.clone()),
+            token,
+        }
     }
 
 
@@ -144,6 +157,29 @@ impl Parser<'_> {
             expression: Expression::Integer(value),
             token: current,
         })
+    }
+
+    fn parse_boolean(&mut self) -> Node {
+        let current = self.next_token();
+        Node {
+            expression: Expression::Boolean(current.token_type == TokenType::True),
+            token: current,
+        }
+    }
+
+    fn parse_prefix_operator(&mut self) -> Option<Node>{
+        let current = self.next_token();
+
+        let mut operands = Vec::new();
+
+        while !self.current_token_is(TokenType::RParen) {
+            operands.push(self.parse_expression()?);
+        }
+
+        Node {
+            expression: Expression::Prefix(current.literal.clone(), operands.into()),
+            token: current,
+        }.into()
     }
 }
 

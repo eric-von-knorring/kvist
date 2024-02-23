@@ -41,6 +41,9 @@ mod test {
         (let (a 5) (b 10))\
         (fn |a, b| (+ a b))\
         (- z 3)\
+        (true false)\
+        (* 1 2 3) \
+        (/ 3 2 1) \
         ";
 
         let expected = [
@@ -73,8 +76,22 @@ mod test {
             (TokenType::Ident, "z"),
             (TokenType::Int, "3"),
             (TokenType::RParen, ")"),
-            // (TokenType::Comma, ","),
-            // (TokenType::Semicolon, ";"),
+            (TokenType::LParen, "("),
+            (TokenType::True, "true"),
+            (TokenType::False, "false"),
+            (TokenType::RParen, ")"),
+            (TokenType::LParen, "("),
+            (TokenType::Asterisk, "*"),
+            (TokenType::Int, "1"),
+            (TokenType::Int, "2"),
+            (TokenType::Int, "3"),
+            (TokenType::RParen, ")"),
+            (TokenType::LParen, "("),
+            (TokenType::Slash, "/"),
+            (TokenType::Int, "3"),
+            (TokenType::Int, "2"),
+            (TokenType::Int, "1"),
+            (TokenType::RParen, ")"),
             (TokenType::EOF, ""),
         ];
 

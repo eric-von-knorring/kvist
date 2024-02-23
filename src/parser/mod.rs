@@ -1,2 +1,2 @@
-mod parser;
+pub mod parser;
 mod parser_test;

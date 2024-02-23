@@ -70,6 +70,8 @@ impl Lexer<'_> {
             ')' => self.create_token(TokenType::RParen, self.current.literal()),
             '+' => self.create_token(TokenType::Plus, self.current.literal()),
             '-' => self.create_token(TokenType::Minus, self.current.literal()),
+            '*' => self.create_token(TokenType::Asterisk, self.current.literal()),
+            '/' => self.create_token(TokenType::Slash, self.current.literal()),
             '=' => self.create_token(TokenType::Assign, self.current.literal()),
             '{' => self.create_token(TokenType::LBrace, self.current.literal()),
             '}' => self.create_token(TokenType::RBrace, self.current.literal()),
@@ -115,6 +117,8 @@ impl Lexer<'_> {
         match literal {
             "let" => TokenType::Let,
             "fn" => TokenType::Function,
+            "true" => TokenType::True,
+            "false" => TokenType::False,
             _ => TokenType::Ident,
         }
     }

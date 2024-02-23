@@ -2,6 +2,7 @@
 
 #[cfg(test)]
 mod test {
+    use crate::ast::ast::Node;
     use crate::ast::expression::Expression;
     use crate::lexer::lexer::Lexer;
     use crate::parser::parser::Parser;
@@ -11,7 +12,7 @@ mod test {
         let tests = [
             ("(let (x 5))", "x", 5.expect()),
             ("(let (y true))", "y", true.expect()),
-            ("(let (foobar y))", "foobar", "y".expect()),
+            ("(let (foobar y))", "foobar", Expected::Identifier("y")),
         ];
 
 
@@ -23,7 +24,7 @@ mod test {
 
             // let (program, errors) = parser.parse_program();
             let program = parser.parse_program().unwrap();
-            assert_eq!(1, program.nodes.len(), "Expected 1 node in program for inpu: {input}");
+            assert_eq!(1, program.nodes.len(), "Expected 1 node in program for input: {input}");
 
             let Expression::Let(name, value) = &program.nodes[0].expression else {
                 panic!("Expected let-expression got={:?}", program.nodes[0].expression);
@@ -38,18 +39,66 @@ mod test {
         }
     }
 
+    #[test]
+    fn test_parsing_prefix_expression() {
+        let prefix_test = [
+            ("(+ 1 2 3)", "+", [1.expect(), 2.expect(), 3.expect()]),
+            ("(- 1 2 3)", "-", [1.expect(), 2.expect(), 3.expect()]),
+            ("(* 1 2 3)", "*", [1.expect(), 2.expect(), 3.expect()]),
+            ("(/ 1 2 3)", "/", [1.expect(), 2.expect(), 3.expect()]),
+        ];
+
+        for (input, expected_operator, expected_operands) in prefix_test {
+            let lexer = Lexer::from(input);
+            let parser = Parser::from(lexer);
+            let program = parser.parse_program().unwrap();
+
+            assert_eq!(1, program.nodes.len(), "Expected 1 node in program for input: {input}");
+
+            let Expression::Prefix(operator, operands) = &program.nodes[0].expression else {
+                panic!("Expected prefix-expression got={:?}", program.nodes[0].expression);
+            };
+
+            assert_eq!(expected_operator, operator.as_ref());
+            assert_nodes(expected_operands.as_ref(), operands);
+        }
+    }
+
+    #[test]
+    fn test() {
+        let list = vec![1, 2, 3].into_boxed_slice();
+        let arr  = [1, 2, 3];
+        assert_eq!(*arr.as_slice(), *list);
+    }
+
     enum Expected {
         Integer(i64),
         Boolean(bool),
         String(&'static str),
+        Identifier(&'static str),
     }
 
     fn assert_expression(expected: &Expected, expression: &Expression) {
         match expected {
-            Expected::Integer(value) => assert_eq!(*value, expression.into()),
-            Expected::Boolean(value) => assert_eq!(*value, expression.into()),
-            Expected::String(value) => assert_eq!(*value, String::from(expression))
+            Expected::Integer(expected) => assert_eq!(*expected, expression.into()),
+            Expected::Boolean(expected) => assert_eq!(*expected, expression.into()),
+            Expected::Identifier(expected) => assert_identifier(*expected, expression),
+            Expected::String(expected) => assert_eq!(*expected, String::from(expression))
         };
+    }
+
+    fn assert_identifier(expected: &str, expression: &Expression) {
+        let Expression::Identifier(identifier) = expression else {
+            panic!("expression is not Identifier. got={:?}", expression)
+        };
+        assert_eq!(expected, identifier.as_ref());
+    }
+
+    fn assert_nodes(expected: &[Expected], nodes: &[Node]) {
+        assert_eq!(expected.len(), nodes.len(), "nodes does not match expected length");
+        for (index, expected) in expected.iter().enumerate() {
+            assert_expression(expected, &nodes[index].expression);
+        }
     }
 
     trait Expect {

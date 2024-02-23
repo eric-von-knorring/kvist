@@ -8,7 +8,9 @@ pub enum Expression {
     Identifier(Rc<str>),
     Integer(i64),
     Boolean(bool),
-    String(Box<str>),
+    // String(Box<str>),
+    String(Rc<str>),
+    Prefix(Rc<str>, Box<[Node]>)
 }
 
 impl Expression {
