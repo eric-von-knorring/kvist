@@ -9,7 +9,7 @@ pub struct Lexer<'a> {
     row: u32,
     input: CharIndices<'a>,
     position: usize,
-    read_position: u32,
+    // read_position: u32,
     current: char,
     peek: Option<(usize, char)>,
     eof: bool,
@@ -22,7 +22,7 @@ impl<'a> From<&'a str> for Lexer<'a> {
             row: 1,
             input: input.char_indices(),
             position: 0,
-            read_position: 0,
+            // read_position: 0,
             current: '\0',
             peek: Some((0, '\0')),
             eof: false,
@@ -69,7 +69,8 @@ impl Lexer<'_> {
             '(' => self.create_token(TokenType::LParen, self.current.literal()),
             ')' => self.create_token(TokenType::RParen, self.current.literal()),
             '+' => self.create_token(TokenType::Plus, self.current.literal()),
-            '-' => self.create_token(TokenType::Minus, self.current.literal()),
+            // '-' => self.create_token(TokenType::Minus, self.current.literal()),
+            '-' => return self.read_minus(),
             '*' => self.create_token(TokenType::Asterisk, self.current.literal()),
             '/' => self.create_token(TokenType::Slash, self.current.literal()),
             '=' => self.create_token(TokenType::Assign, self.current.literal()),
@@ -83,7 +84,8 @@ impl Lexer<'_> {
                 if Lexer::is_letter(self.current) {
                     return self.read_identifier()
                 } else if self.current.is_digit(10)  {
-                    return self.read_number()
+                    // return self.read_number()
+                    return self.read_number(String::new())
                 } else {
                     self.create_token(TokenType::Illegal, self.current.literal())
                 }
@@ -123,13 +125,47 @@ impl Lexer<'_> {
         }
     }
 
-    fn read_number(&mut self) -> Token {
-        let mut literal = String::new();
+    fn read_minus(&mut self) -> Token {
+        // if self.peek.is_some_and(|(_, peek )| peek.is_digit(10)) {
+        //     return self.read_number();
+        // }
+        // match self.peek {
+        //     Some(( _, '0'..='9' )) => self.read_number(String::from("-")),
+        //     // None =>
+        //     _ => self.create_token(TokenType::Minus, self.current.literal()),
+        // }
+        let current = self.current;
+        self.read_char();
+        if self.current.is_digit(10) {
+            return self.read_number(String::from(current));
+        }
+        self.create_token(TokenType::Minus, current.literal())
+    }
+
+    // fn read_number(&mut self) -> Token {
+    fn read_number(&mut self, literal: String) -> Token {
+        // let mut literal = String::new();
+        let mut token_type = TokenType::Int;
+        // while self.current.is_digit(10) {
+        //     literal.push(self.current);
+        //     self.read_char();
+        // }
+        let mut literal = self.read_digits(literal);
+        if self.current == '.' {
+            token_type = TokenType::Float;
+            literal.push(self.current);
+            self.read_char();
+            literal = self.read_digits(literal);
+        }
+        return self.create_token(token_type, Rc::from(literal));
+    }
+
+    fn read_digits(&mut self, mut literal: String) -> String {
         while self.current.is_digit(10) {
             literal.push(self.current);
             self.read_char();
         }
-        return self.create_token(TokenType::Int, Rc::from(literal));
+        return literal;
     }
 
     fn is_letter(character: char) -> bool {

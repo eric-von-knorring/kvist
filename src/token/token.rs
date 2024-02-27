@@ -18,6 +18,7 @@ pub enum TokenType {
     // Identifiers + literals
     Ident,
     Int,
+    Float,
     String,
 
     // Operators

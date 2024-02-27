@@ -1,7 +1,7 @@
 
 
 #[cfg(test)]
-mod test {
+mod parser_test {
     use crate::ast::ast::Node;
     use crate::ast::expression::Expression;
     use crate::lexer::lexer::Lexer;
@@ -18,13 +18,17 @@ mod test {
 
         for (input, expected_identifier, expected_value) in tests {
             // let lexer = Lexer::new(input);
-            // println!("{}", input);
+            println!("{}", input);
             let lexer = Lexer::from(input);
             let parser = Parser::from(lexer);
 
             // let (program, errors) = parser.parse_program();
             let program = parser.parse_program().unwrap();
             assert_eq!(1, program.nodes.len(), "Expected 1 node in program for input: {input}");
+
+            // let Expression::SExpression(nodes) = &program.nodes[0].expression else {
+            //     panic!("Expected let-expression got={:?}", program.nodes[0].expression);
+            // };
 
             let Expression::Let(name, value) = &program.nodes[0].expression else {
                 panic!("Expected let-expression got={:?}", program.nodes[0].expression);
@@ -65,14 +69,73 @@ mod test {
     }
 
     #[test]
-    fn test() {
-        let list = vec![1, 2, 3].into_boxed_slice();
-        let arr  = [1, 2, 3];
-        assert_eq!(*arr.as_slice(), *list);
+    fn test_float_expression() {
+        let tests = [
+            // ("(let (x 5.))", 5.),
+            // ("(6.6)", 6.6),
+            ("6.", 6.),
+            ("7.7", 7.7),
+        ];
+
+        for (input, expected) in tests {
+            let lexer = Lexer::from(input);
+            let parser = Parser::from(lexer);
+            let program = parser.parse_program().unwrap();
+
+            assert_eq!(1, program.nodes.len(), "Expected 1 node in program for input: {input}");
+
+            let Expression::Float(value) = &program.nodes[0].expression else {
+                panic!("Expected prefix-expression got={:?}", program.nodes[0].expression);
+            };
+
+            assert_eq!(expected, *value);
+        }
     }
 
+    #[test]
+    fn test_s_expression() {
+        let input = "(1 2)";
+        let lexer = Lexer::from(input);
+        let parser = Parser::from(lexer);
+        let program = parser.parse_program().unwrap();
+
+        assert_eq!(1, program.nodes.len(), "Expected 1 node in program for input: {input}");
+
+        let Expression::SExpression(nodes) = &program.nodes[0].expression else {
+            panic!("Expected prefix-expression got={:?}", program.nodes[0].expression);
+        };
+        assert_eq!(2, nodes.len());
+
+        let Expression::Integer(element) = nodes[0].expression else {
+            panic!("Expected integer-expression got={:?}", program.nodes[0].expression);
+        };
+        assert_eq!(1, element);
+
+        let Expression::Integer(element) = nodes[1].expression else {
+            panic!("Expected integer-expression got={:?}", program.nodes[0].expression);
+        };
+        assert_eq!(2, element);
+    }
+
+    #[test]
+    fn test_empty_s_expression() {
+        let input = "()";
+        let lexer = Lexer::from(input);
+        let parser = Parser::from(lexer);
+        let program = parser.parse_program().unwrap();
+
+        assert_eq!(1, program.nodes.len(), "Expected 1 node in program for input: {input}");
+
+        let Expression::SExpression(value) = &program.nodes[0].expression else {
+            panic!("Expected SExpression expression got={:?}", program.nodes[0].expression);
+        };
+        assert!(value.is_empty())
+    }
+
+
     enum Expected {
-        Integer(i64),
+        // Integer(i64),
+        Integer(i32),
         Boolean(bool),
         String(&'static str),
         Identifier(&'static str),
@@ -105,7 +168,8 @@ mod test {
         fn expect(self) -> Expected;
     }
 
-    impl Expect for i64 {
+    // impl Expect for i64 {
+    impl Expect for i32 {
         fn expect(self) -> Expected {
             Expected::Integer(self)
         }
@@ -141,7 +205,8 @@ mod test {
     //     }
     // }
 
-    impl From<&Expression> for i64 {
+    // impl From<&Expression> for i64 {
+    impl From<&Expression> for i32 {
         fn from(expression: &Expression) -> Self {
             let Expression::Integer(value) = expression else {
                 panic!("Expected Integer got={:?}", expression)

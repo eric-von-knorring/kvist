@@ -44,6 +44,8 @@ mod test {
         (true false)\
         (* 1 2 3) \
         (/ 3 2 1) \
+        (- -1) \
+        (+ 5. 10.0 -10. -5.0) \
         ";
 
         let expected = [
@@ -91,6 +93,17 @@ mod test {
             (TokenType::Int, "3"),
             (TokenType::Int, "2"),
             (TokenType::Int, "1"),
+            (TokenType::RParen, ")"),
+            (TokenType::LParen, "("),
+            (TokenType::Minus, "-"),
+            (TokenType::Int, "-1"),
+            (TokenType::RParen, ")"),
+            (TokenType::LParen, "("),
+            (TokenType::Plus, "+"),
+            (TokenType::Float, "5."),
+            (TokenType::Float, "10.0"),
+            (TokenType::Float, "-10."),
+            (TokenType::Float, "-5.0"),
             (TokenType::RParen, ")"),
             (TokenType::EOF, ""),
         ];

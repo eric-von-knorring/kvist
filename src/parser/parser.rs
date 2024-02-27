@@ -1,7 +1,7 @@
 use std::mem;
+
 use crate::ast::ast::{Node, Program};
 use crate::ast::expression::Expression;
-
 use crate::lexer::lexer::Lexer;
 use crate::token::token::{Token, TokenType};
 
@@ -15,28 +15,16 @@ pub struct Parser<'a> {
 }
 
 impl Parser<'_> {
-    // pub fn new(mut lexer: Lexer) {
-    //     let current_token = lexer.next_token();
-    //     let peek_token = lexer.next_token();
-    //
-    //     Parser {
-    //         lexer,
-    //         errors: Vec::new(),
-    //         current_token,
-    //         peek_token,
-    //     };
-    // }
-
-    // pub fn parse_program(mut self) -> (Program, Vec<String>) {
     pub fn parse_program(mut self) -> Result<Program, Vec<String>> {
         // let mut program = Program::new();
         let mut nodes = Vec::new();
         while !self.current_token_is(TokenType::EOF) {
-            println!("{:?}", self.current_token);
+            // println!("{:?}", self.current_token);
             if let Some(node) = self.parse_expression() {
                 // program.statements.push(statement);
+                // println!("{:?}", node);
                 nodes.push(node);
-            }
+            } else { self.errors.push("Failed to parse expression.".to_string()) }
             // self.next_token();
         }
         if !self.errors.is_empty() {
@@ -63,6 +51,18 @@ impl Parser<'_> {
         self.peek_token.token_type == token_type
     }
 
+    fn peek_token_is_literal(&self) -> bool {
+        match self.peek_token.token_type {
+            TokenType::Ident
+            | TokenType::Int
+            | TokenType::Float
+            | TokenType::True
+            | TokenType::False
+            | TokenType::LParen => true,
+            _ => false,
+        }
+    }
+
     fn peek_error(&mut self, expected: TokenType) {
         self.errors
             .push(format!("On row: {}, col: {}. Expected next token to be {:?}, got {:?} instead.",
@@ -80,10 +80,30 @@ impl Parser<'_> {
     }
 
     fn parse_expression(&mut self) -> Option<Node> {
+        // if self.current_token_is(TokenType::LParen) && self.peek_token_is(TokenType::LParen) {
+        if self.current_token_is(TokenType::LParen) && self.peek_token_is_literal() {
+            return self.parse_s_expression();
+        }
+        if self.current_token_is(TokenType::LParen) && self.peek_token_is(TokenType::RParen) {
+            let current = self.next_token();
+            self.next_token();
+            return Node { expression: Expression::SExpression(Box::default()), token: current }.into();
+        }
+
+        let mut in_parenthesis = false;
         if self.current_token_is(TokenType::LParen) {
+            in_parenthesis = true;
             self.next_token();
         }
-        let mut result = self.prefix_parse()?;
+
+        let result = self.prefix_parse()?;
+
+        match  (in_parenthesis, self.current_token_is(TokenType::RParen)) {
+            // Fixme return error
+            (true, false) => return None,
+            (true, true) => {self.next_token();},
+            (false, _) => {},
+        };
         Some(result)
     }
 
@@ -91,6 +111,7 @@ impl Parser<'_> {
         match self.current_token.token_type {
             TokenType::Let => self.parse_let(),
             TokenType::Int => self.parse_integer_literal(),
+            TokenType::Float => self.parse_float_literal(),
             TokenType::Ident => self.parse_identifier().into(),
             TokenType::Plus
             | TokenType::Minus
@@ -100,8 +121,23 @@ impl Parser<'_> {
             _ => {
                 self.next_token();
                 None
-            },
+            }
         }
+    }
+
+    fn parse_s_expression(&mut self) -> Option<Node> {
+        let token = self.next_token();
+        let mut expressions = Vec::new();
+        while !self.current_token_is(TokenType::RParen) {
+            expressions.push(self.parse_expression()?);
+            println!("{:?}", expressions);
+        }
+        self.next_token();
+
+        Some(Node {
+            expression: Expression::SExpression(Box::from(expressions)),
+            token,
+        })
     }
 
     fn parse_let(&mut self) -> Option<Node> {
@@ -121,13 +157,20 @@ impl Parser<'_> {
         let value = self.parse_expression()?;
 
         // FIXME, should probably also be an error
-        if self.peek_token_is(TokenType::RParen) {
-            self.next_token();
-        }
+        self.expect_peek(TokenType::RParen)?;
+        // self.next_token();
+        // if self.peek_token_is(TokenType::RParen) {
+        //     self.next_token();
+        // }
+        // if self.expect_peek()
+        //
+        // if self.peek_token_is(TokenType::RParen) {
+        //     self.next_token();
+        // }
 
         Some(Node {
             expression: Expression::Let(identifier.into(), value.into()),
-            token: current
+            token: current,
         })
     }
 
@@ -144,7 +187,8 @@ impl Parser<'_> {
         // let current = self.current_token.clone();
         let current = self.next_token();
 
-        let value = if let Ok(value) = current.literal.parse::<i64>() {
+        // let value = if let Ok(value) = current.literal.parse::<i64>() {
+        let value = if let Ok(value) = current.literal.parse::<i32>() {
             value
         } else {
             // FIXME, return an error
@@ -159,6 +203,24 @@ impl Parser<'_> {
         })
     }
 
+    fn parse_float_literal(&mut self) -> Option<Node> {
+        let current = self.next_token();
+
+        let value = if let Ok(value) = current.literal.parse::<f64>() {
+            value
+        } else {
+            // FIXME, return an error
+            self.errors
+                .push(format!("could not parse {} as integer", current.literal));
+            return None;
+        };
+
+        Some(Node {
+            expression: Expression::Float(value),
+            token: current,
+        })
+    }
+
     fn parse_boolean(&mut self) -> Node {
         let current = self.next_token();
         Node {
@@ -167,7 +229,7 @@ impl Parser<'_> {
         }
     }
 
-    fn parse_prefix_operator(&mut self) -> Option<Node>{
+    fn parse_prefix_operator(&mut self) -> Option<Node> {
         let current = self.next_token();
 
         let mut operands = Vec::new();
@@ -175,6 +237,11 @@ impl Parser<'_> {
         while !self.current_token_is(TokenType::RParen) {
             operands.push(self.parse_expression()?);
         }
+
+        // self.next_token();
+        // if self.current_token_is(TokenType::RParen) {
+        //     self.next_token();
+        // }
 
         Node {
             expression: Expression::Prefix(current.literal.clone(), operands.into()),

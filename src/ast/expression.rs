@@ -1,12 +1,16 @@
 use std::rc::Rc;
+
 use crate::ast::ast::{AST, Node};
 
 #[derive(Debug)]
 pub enum Expression {
+    SExpression(Box<[Node]>),
     // Let(Box<str>, Box<Node>),
     Let(Box<Node>, Box<Node>),
     Identifier(Rc<str>),
-    Integer(i64),
+    // Integer(i64),
+    Integer(i32),
+    Float(f64),
     Boolean(bool),
     // String(Box<str>),
     String(Rc<str>),
@@ -23,4 +27,4 @@ impl Expression {
     }
 }
 
-struct Identifier(str);
+// struct Identifier(str);

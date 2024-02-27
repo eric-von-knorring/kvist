@@ -1,9 +1,14 @@
 use std::fmt::{Display, Formatter};
 use std::rc::Rc;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Object {
-    Integer(i64),
+    Unit,
+    // Integer(i64),
+    Integer(i32),
+    // Float(i64, i64),
+    // Float(Fraction),
+    Float(f64),
     Boolean(bool),
     String(Rc<str>),
     Array(Rc<[Object]>),
@@ -18,7 +23,9 @@ pub(crate) trait Viewable {
 impl Viewable for Object {
     fn view(&self) -> String {
         match self {
+            Object::Unit => "()".to_string(),
             Object::Integer(value) => format!("{}", value),
+            Object::Float(value) => format!("{}", value),
             Object::Boolean(value) => format!("{}", value),
             Object::String(value) => format!("{}", value),
             Object::Array(values) => format!("[{}]", values.iter()
@@ -35,7 +42,9 @@ impl Viewable for Object {
 impl Display for Object {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
+            Object::Unit => write!(f, "Unit"),
             Object::Integer(_) => write!(f, "Integer"),
+            Object::Float(_) => write!(f, "Float"),
             Object::Boolean(_) => write!(f, "Boolean"),
             Object::String(_) => write!(f, "String"),
             Object::Array(_) => write!(f, "Array"),
