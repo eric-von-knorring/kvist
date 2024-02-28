@@ -11,7 +11,7 @@ mod test {
         let input = "§(+)={}::";
 
         let expected = [
-            (TokenType::Builtin, "§"),
+            (TokenType::Section, "§"),
             (TokenType::LParen, "("),
             (TokenType::Plus, "+"),
             (TokenType::RParen, ")"),
@@ -46,6 +46,8 @@ mod test {
         (/ 3 2 1) \
         (- -1) \
         (+ 5. 10.0 -10. -5.0) \
+        \"This is a text\"\
+        [ ! < > = ] \
         ";
 
         let expected = [
@@ -105,6 +107,13 @@ mod test {
             (TokenType::Float, "-10."),
             (TokenType::Float, "-5.0"),
             (TokenType::RParen, ")"),
+            (TokenType::String, "This is a text"),
+            (TokenType::LBracket, "["),
+            (TokenType::Bang, "!"),
+            (TokenType::LesserThan, "<"),
+            (TokenType::GreaterThan, ">"),
+            (TokenType::Equals, "="),
+            (TokenType::RBracket, "]"),
             (TokenType::EOF, ""),
         ];
 

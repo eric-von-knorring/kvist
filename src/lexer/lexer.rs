@@ -38,44 +38,29 @@ impl<'a> From<&'a str> for Lexer<'a> {
 }
 
 impl Lexer<'_> {
-    // pub fn new(input: &str) -> Lexer {
-    //     let mut lexer = Lexer {
-    //         col: 1,
-    //         row: 1,
-    //         input: input.char_indices(),
-    //         position: 0,
-    //         read_position: 0,
-    //         current: '\0',
-    //         peek: Some((0, '\0')),
-    //         eof: false,
-    //     };
-    //
-    //     for i in 0..2 {
-    //         (_, lexer.current) = lexer.peek.unwrap_or((i, '\0'));
-    //         lexer.peek = lexer.input.next();
-    //     }
-    //
-    //     return lexer;
-    // }
-
     pub fn next_token(&mut self) -> Token {
         self.skip_whitespace();
         let token = match self.current {
             // '(' => Token { token_type: TokenType::LParen, row: self.row, col: self.col, literal: self.current.into()},
             ':' => self.colon_token(),
             ',' => self.create_token(TokenType::Comma, self.current.literal()),
-            '§' => self.create_token(TokenType::Builtin, self.current.literal()),
+            '§' => self.create_token(TokenType::Section, self.current.literal()),
+            '!' => self.create_token(TokenType::Bang, self.current.literal()),
             '|' => self.create_token(TokenType::Pipe, self.current.literal()),
             '(' => self.create_token(TokenType::LParen, self.current.literal()),
             ')' => self.create_token(TokenType::RParen, self.current.literal()),
             '+' => self.create_token(TokenType::Plus, self.current.literal()),
-            // '-' => self.create_token(TokenType::Minus, self.current.literal()),
             '-' => return self.read_minus(),
             '*' => self.create_token(TokenType::Asterisk, self.current.literal()),
             '/' => self.create_token(TokenType::Slash, self.current.literal()),
-            '=' => self.create_token(TokenType::Assign, self.current.literal()),
+            '=' => self.create_token(TokenType::Equals, self.current.literal()),
             '{' => self.create_token(TokenType::LBrace, self.current.literal()),
             '}' => self.create_token(TokenType::RBrace, self.current.literal()),
+            '[' => self.create_token(TokenType::LBracket, self.current.literal()),
+            ']' => self.create_token(TokenType::RBracket, self.current.literal()),
+            '<' => self.create_token(TokenType::LesserThan, self.current.literal()),
+            '>' => self.create_token(TokenType::GreaterThan, self.current.literal()),
+            '"' => self.read_string(),
             '\0' => {
                 self.eof = true;
                 self.create_token(TokenType::EOF, Rc::from(""))
@@ -125,15 +110,29 @@ impl Lexer<'_> {
         }
     }
 
+    fn read_string(&mut self) -> Token {
+        let row = self.row;
+        let col = self.col;
+
+        let mut string = String::new();
+        // self.read_char();
+        loop {
+            self.read_char();
+            if self.current == '"' || self.current == '\0' {
+                break;
+            }
+            string.push(self.current);
+        }
+        // return self.input[position..self.position].to_string();
+        return Token {
+            token_type: TokenType::String,
+            row,
+            col,
+            literal: Rc::from(string),
+        };
+    }
+
     fn read_minus(&mut self) -> Token {
-        // if self.peek.is_some_and(|(_, peek )| peek.is_digit(10)) {
-        //     return self.read_number();
-        // }
-        // match self.peek {
-        //     Some(( _, '0'..='9' )) => self.read_number(String::from("-")),
-        //     // None =>
-        //     _ => self.create_token(TokenType::Minus, self.current.literal()),
-        // }
         let current = self.current;
         self.read_char();
         if self.current.is_digit(10) {
@@ -142,14 +141,8 @@ impl Lexer<'_> {
         self.create_token(TokenType::Minus, current.literal())
     }
 
-    // fn read_number(&mut self) -> Token {
     fn read_number(&mut self, literal: String) -> Token {
-        // let mut literal = String::new();
         let mut token_type = TokenType::Int;
-        // while self.current.is_digit(10) {
-        //     literal.push(self.current);
-        //     self.read_char();
-        // }
         let mut literal = self.read_digits(literal);
         if self.current == '.' {
             token_type = TokenType::Float;
@@ -216,16 +209,12 @@ impl Lexer<'_> {
 }
 
 trait ToLiteral {
-    // fn literal<'a>(self) -> &'a str;
-    // fn literal<'a>(self) -> Box<str>;
+
     fn literal(self) -> Rc<str>;
 }
 
 impl ToLiteral for char {
-    // fn literal<'a>(self) -> Box<str> {
     fn literal(self) -> Rc<str> {
-        // let mut tmp = [0u8; 4];
-        // Box::new(*self.encode_utf8(&mut tmp))
         Rc::from(self.to_string().as_str())
     }
 }

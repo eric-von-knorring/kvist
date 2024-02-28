@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod test {
     use std::rc::Rc;
-
     use crate::evaluator::evaluator::Eval;
     use crate::lexer::lexer::Lexer;
     use crate::object::environment::Environment;
@@ -59,6 +58,37 @@ mod test {
     }
 
     #[test]
+    fn test_eval_boolean_expressions() {
+        let tests = [
+            ("true", true),
+            ("false", false),
+            ("(=)", false),
+            ("(= 1)", true),
+            ("(= 1 1)", true),
+            ("(= 1 2)", false),
+            ("(= 1 2 3)", false),
+            ("(= 1 1 1)", true),
+            ("(<)", false),
+            ("(< 1)", true),
+            ("(< 1 2)", true),
+            ("(< 2 1)", false),
+            ("(< 1 2 3)", true),
+            ("(< 3 2 1)", false),
+            ("(>)", false),
+            ("(> 1)", true),
+            ("(> 1 2)", false),
+            ("(> 2 1)", true),
+            ("(> 1 2 3)", false),
+            ("(> 3 2 1)", true),
+        ];
+
+        for (input, expected) in tests {
+            let evaluated = apply_eval(input).unwrap();
+            test_boolean_object(evaluated, expected, input);
+        }
+    }
+
+    #[test]
     fn test_eval_s_expressions() {
         let input = "(1 2 3)";
 
@@ -72,6 +102,14 @@ mod test {
 
         let evaluated = apply_eval(input).unwrap();
         assert_eq!(Object::Unit, evaluated);
+    }
+
+    #[test]
+    fn test_eval_string() {
+        let input = "\"This is text\"";
+
+        let evaluated = apply_eval(input).unwrap();
+        assert_eq!(Object::String(Rc::from("This is text")), evaluated);
     }
 
     fn apply_eval(input: &str) -> Result<Object, String> {
@@ -98,25 +136,11 @@ mod test {
         assert_eq!(expected, actual, "Input '{input}' failed to validate");
     }
 
-    #[test]
-    fn test() {
-        let i = [
-            Object::String(Rc::from("a")),
-            Object::Integer(12),
-            Object::Boolean(true),
-        ];
-
-
-        let res = i.iter()
-            .map(|o| {
-                println!("map {o:?}");
-                o.clone()
-            })
-            .reduce(|acc, next| {
-                println!("acc: {acc:?}, next: {next:?}");
-                Object::String(format!("{acc:?}, {next:?}").into())
-            });
-
-        println!("res: {res:?}")
+    fn test_boolean_object(object: Object, expected: bool, input: &str) {
+        let Object::Boolean(actual) = object else {
+            panic!("object is not Integer. got={:?}", object)
+        };
+        assert_eq!(expected, actual, "Input '{input}' failed to validate");
     }
+
 }

@@ -6,8 +6,6 @@ pub enum Object {
     Unit,
     // Integer(i64),
     Integer(i32),
-    // Float(i64, i64),
-    // Float(Fraction),
     Float(f64),
     Boolean(bool),
     String(Rc<str>),

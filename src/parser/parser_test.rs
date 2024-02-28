@@ -50,6 +50,9 @@ mod parser_test {
             ("(- 1 2 3)", "-", [1.expect(), 2.expect(), 3.expect()]),
             ("(* 1 2 3)", "*", [1.expect(), 2.expect(), 3.expect()]),
             ("(/ 1 2 3)", "/", [1.expect(), 2.expect(), 3.expect()]),
+            ("(= 1 2 3)", "=", [1.expect(), 2.expect(), 3.expect()]),
+            ("(< 1 2 3)", "<", [1.expect(), 2.expect(), 3.expect()]),
+            ("(> 1 2 3)", ">", [1.expect(), 2.expect(), 3.expect()]),
         ];
 
         for (input, expected_operator, expected_operands) in prefix_test {
@@ -71,8 +74,6 @@ mod parser_test {
     #[test]
     fn test_float_expression() {
         let tests = [
-            // ("(let (x 5.))", 5.),
-            // ("(6.6)", 6.6),
             ("6.", 6.),
             ("7.7", 7.7),
         ];
@@ -132,6 +133,25 @@ mod parser_test {
         assert!(value.is_empty())
     }
 
+    #[test]
+    fn test_string_literal() {
+        let input = "\"This is text\"";
+        let lexer = Lexer::from(input);
+        let parser = Parser::from(lexer);
+        let program = parser.parse_program().unwrap();
+
+        assert_eq!(1, program.nodes.len(), "Expected 1 node in program for input: {input}");
+
+        let Expression::String(value) = &program.nodes[0].expression else {
+            panic!("Expected SExpression expression got={:?}", program.nodes[0].expression);
+        };
+        assert_eq!("This is text", value.as_ref())
+    }
+
+    #[test]
+    fn test_not_expression() {
+        todo!()
+    }
 
     enum Expected {
         // Integer(i64),

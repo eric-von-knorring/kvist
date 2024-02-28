@@ -25,7 +25,8 @@ pub fn start() {
             continue;
         }
 
-        let lexer = Lexer::from(line.as_str());
+        let input = format!("({line})");
+        let lexer = Lexer::from(input.as_str());
         let parser = Parser::from(lexer);
         // match parser.parse_program().map(|program| program.eval(&mut env)) {
         let evaluation = match parser.parse_program() {

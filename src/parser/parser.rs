@@ -40,10 +40,7 @@ impl Parser<'_> {
     }
 
     fn next_token(&mut self) -> Token {
-        // let previous = self.current_token;
-        // self.current_token = mem::replace(&mut self.peek_token, self.lexer.next_token());
         let next = mem::replace(&mut self.peek_token, self.lexer.next_token());
-        // dbg!(mem::replace(&mut self.current_token, next))
         mem::replace(&mut self.current_token, next)
     }
 
@@ -84,6 +81,7 @@ impl Parser<'_> {
         if self.current_token_is(TokenType::LParen) && self.peek_token_is_literal() {
             return self.parse_s_expression();
         }
+
         if self.current_token_is(TokenType::LParen) && self.peek_token_is(TokenType::RParen) {
             let current = self.next_token();
             self.next_token();
@@ -112,11 +110,15 @@ impl Parser<'_> {
             TokenType::Let => self.parse_let(),
             TokenType::Int => self.parse_integer_literal(),
             TokenType::Float => self.parse_float_literal(),
+            TokenType::String => self.parse_string_literal().into(),
             TokenType::Ident => self.parse_identifier().into(),
             TokenType::Plus
             | TokenType::Minus
             | TokenType::Asterisk
-            | TokenType::Slash => self.parse_prefix_operator(),
+            | TokenType::Slash
+            | TokenType::GreaterThan
+            | TokenType::LesserThan
+            | TokenType::Equals => self.parse_prefix_operator(),
             TokenType::True | TokenType::False => self.parse_boolean().into(),
             _ => {
                 self.next_token();
@@ -128,9 +130,10 @@ impl Parser<'_> {
     fn parse_s_expression(&mut self) -> Option<Node> {
         let token = self.next_token();
         let mut expressions = Vec::new();
+
         while !self.current_token_is(TokenType::RParen) {
             expressions.push(self.parse_expression()?);
-            println!("{:?}", expressions);
+            // println!("{:?}", expressions);
         }
         self.next_token();
 
@@ -145,11 +148,6 @@ impl Parser<'_> {
 
         self.expect_peek(TokenType::Ident)?;
 
-        // let identifier_token = self.next_token();
-        // let identifier = Node {
-        //     expression: Expression::Identifier(identifier_token.literal.clone()),
-        //     token: identifier_token,
-        // };
         let identifier = self.parse_identifier();
 
         // println!("{:?}", self.current_token);
@@ -158,15 +156,6 @@ impl Parser<'_> {
 
         // FIXME, should probably also be an error
         self.expect_peek(TokenType::RParen)?;
-        // self.next_token();
-        // if self.peek_token_is(TokenType::RParen) {
-        //     self.next_token();
-        // }
-        // if self.expect_peek()
-        //
-        // if self.peek_token_is(TokenType::RParen) {
-        //     self.next_token();
-        // }
 
         Some(Node {
             expression: Expression::Let(identifier.into(), value.into()),
@@ -221,6 +210,14 @@ impl Parser<'_> {
         })
     }
 
+    fn parse_string_literal(&mut self) -> Node {
+        let current = self.next_token();
+        Node {
+            expression: Expression::String(current.literal.clone()),
+            token: current,
+        }
+    }
+
     fn parse_boolean(&mut self) -> Node {
         let current = self.next_token();
         Node {
@@ -237,11 +234,6 @@ impl Parser<'_> {
         while !self.current_token_is(TokenType::RParen) {
             operands.push(self.parse_expression()?);
         }
-
-        // self.next_token();
-        // if self.current_token_is(TokenType::RParen) {
-        //     self.next_token();
-        // }
 
         Node {
             expression: Expression::Prefix(current.literal.clone(), operands.into()),

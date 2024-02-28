@@ -36,7 +36,7 @@ pub enum TokenType {
     Equals,
 
     //Delimiters
-    Builtin,
+    Section,
     Pipe,
     LParen,
     RParen,
@@ -47,7 +47,7 @@ pub enum TokenType {
 
 
     // Keywords
-    Null,
+    // Null,
     Function,
     Let,
     True,
