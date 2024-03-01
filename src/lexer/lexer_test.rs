@@ -15,7 +15,8 @@ mod test {
             (TokenType::LParen, "("),
             (TokenType::Plus, "+"),
             (TokenType::RParen, ")"),
-            (TokenType::Assign, "="),
+            // (TokenType::Assign, "="),
+            (TokenType::Equals, "="),
             (TokenType::LBrace, "{"),
             (TokenType::RBrace, "}"),
             (TokenType::DoubleColon, "::"),
@@ -48,6 +49,7 @@ mod test {
         (+ 5. 10.0 -10. -5.0) \
         \"This is a text\"\
         [ ! < > = ] \
+        (@ 1 [1 2 3])\
         ";
 
         let expected = [
@@ -114,6 +116,15 @@ mod test {
             (TokenType::GreaterThan, ">"),
             (TokenType::Equals, "="),
             (TokenType::RBracket, "]"),
+            (TokenType::LParen, "("),
+            (TokenType::At, "@"),
+            (TokenType::Int, "1"),
+            (TokenType::LBracket, "["),
+            (TokenType::Int, "1"),
+            (TokenType::Int, "2"),
+            (TokenType::Int, "3"),
+            (TokenType::RBracket, "]"),
+            (TokenType::RParen, ")"),
             (TokenType::EOF, ""),
         ];
 

@@ -24,7 +24,7 @@ pub enum TokenType {
     // Operators
     Comma,
     DoubleColon,
-    Assign,
+    At,
     Plus,
     Minus,
     Bang,

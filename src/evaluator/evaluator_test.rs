@@ -1,3 +1,6 @@
+use std::rc::Rc;
+use crate::object::object::Object;
+
 #[cfg(test)]
 mod test {
     use std::rc::Rc;
@@ -62,6 +65,10 @@ mod test {
         let tests = [
             ("true", true),
             ("false", false),
+            ("(!false)", true),
+            ("(!true)", false),
+            ("(! (false))", true),
+            ("(! (true))", false),
             ("(=)", false),
             ("(= 1)", true),
             ("(= 1 1)", true),
@@ -112,6 +119,56 @@ mod test {
         assert_eq!(Object::String(Rc::from("This is text")), evaluated);
     }
 
+    #[test]
+    fn test_eval_string_concatenation() {
+        let tests = [
+            ("(+ \"Hello\" \" \" \"World\")", "Hello World"),
+            ("(+ \"Value (\" () \")\")", "Value (())"),
+            ("(+ \"Value (\" 1 \")\")", "Value (1)"),
+            ("(+ \"Value (\" 3.7 \")\")", "Value (3.7)"),
+            ("(+ \"Value (\" true \")\")", "Value (true)"),
+            ("(+ \"Result: \" (+ 1 1) \"!\")", "Result: 2!"),
+            ("(+ \"Result: \" (< 1 2) \"!\")", "Result: true!"),
+        ];
+
+        for (input, expected) in tests {
+            let evaluated = apply_eval(input).unwrap();
+            assert_eq!(Object::String(Rc::from(expected)), evaluated);
+        }
+    }
+
+    #[test]
+    fn test_array_literal() {
+        let tests = [
+            ("[(/ 2 2) (+ 1 1) 3]", Object::Array(Rc::from([Object::Integer(1), Object::Integer(2), Object::Integer(3)]))),
+            ("[1 2 3]", vec![Object::Integer(1), Object::Integer(2), Object::Integer(3)].into()),
+            ("[1 7.4 3]", vec![Object::Integer(1), Object::Float(7.4), Object::Integer(3)].into()),
+            ("[1 7.4 true]", vec![Object::Integer(1), Object::Float(7.4), Object::Boolean(true)].into()),
+            ("[() 4 true]", vec![Object::Unit, Object::Integer(4), Object::Boolean(true)].into()),
+            ("[\"text\" 4 true]", vec![Object::String("text".into()), Object::Integer(4), Object::Boolean(true)].into()),
+            ("[\"text\" \" \" \"string\"]", vec![Object::String("text".into()), Object::String(" ".into()), Object::String("string".into())].into()),
+        ];
+
+
+        for (input, expected) in tests {
+            let evaluated = apply_eval(input).unwrap();
+            assert_eq!(expected, evaluated);
+        }
+    }
+
+    #[test]
+    fn test_array_index_operator() {
+        let tests = [
+            ("(@ 1 [\"one\" \"two\" \"three\"])", Object::String(Rc::from("two"))),
+            ("(let (foo [5 6 7]))(@ 1 foo)", Object::Integer(6)),
+        ];
+
+        for (input, expected) in tests {
+            let evaluated = apply_eval(input).unwrap();
+            assert_eq!(expected, evaluated);
+        }
+    }
+
     fn apply_eval(input: &str) -> Result<Object, String> {
         // let program = Parser::new(Lexer::new(input)).parse_program();
         let lexer = Lexer::from(input);
@@ -142,5 +199,10 @@ mod test {
         };
         assert_eq!(expected, actual, "Input '{input}' failed to validate");
     }
+}
 
+impl From<Vec<Object>> for Object {
+    fn from(value: Vec<Object>) -> Self {
+        Object::Array(Rc::from(value))
+    }
 }

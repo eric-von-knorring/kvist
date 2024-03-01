@@ -40,7 +40,7 @@ impl AST for Program {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Node {
     pub expression: Expression,
     // col: u32,

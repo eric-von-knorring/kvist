@@ -111,13 +111,16 @@ impl Parser<'_> {
             TokenType::Int => self.parse_integer_literal(),
             TokenType::Float => self.parse_float_literal(),
             TokenType::String => self.parse_string_literal().into(),
+            TokenType::LBracket => self.parse_array_literal(),
             TokenType::Ident => self.parse_identifier().into(),
+            TokenType::At => self.parse_index_operator(),
             TokenType::Plus
             | TokenType::Minus
             | TokenType::Asterisk
             | TokenType::Slash
             | TokenType::GreaterThan
             | TokenType::LesserThan
+            | TokenType::Bang
             | TokenType::Equals => self.parse_prefix_operator(),
             TokenType::True | TokenType::False => self.parse_boolean().into(),
             _ => {
@@ -218,12 +221,39 @@ impl Parser<'_> {
         }
     }
 
+    fn parse_array_literal(&mut self) -> Option<Node> {
+        let token = self.next_token();
+        let mut expressions = Vec::new();
+
+        while !self.current_token_is(TokenType::RBracket) {
+            expressions.push(self.parse_expression()?);
+            // println!("{:?}", expressions);
+        }
+        self.next_token();
+        Node {
+            expression: Expression::Array(expressions.into()),
+            token,
+        }.into()
+    }
+
     fn parse_boolean(&mut self) -> Node {
         let current = self.next_token();
         Node {
             expression: Expression::Boolean(current.token_type == TokenType::True),
             token: current,
         }
+    }
+
+    fn parse_index_operator(&mut self) -> Option<Node> {
+        // let current = self.next_token();
+        let current = self.expect_peek(TokenType::Int)?;
+        let index = self.parse_integer_literal()?;
+        let operand = self.parse_expression()?;
+
+        Node {
+            expression: Expression::Index(index.into(), operand.into()),
+            token: current,
+        }.into()
     }
 
     fn parse_prefix_operator(&mut self) -> Option<Node> {

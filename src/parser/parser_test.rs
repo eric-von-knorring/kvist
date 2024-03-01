@@ -1,5 +1,3 @@
-
-
 #[cfg(test)]
 mod parser_test {
     use crate::ast::ast::Node;
@@ -53,6 +51,7 @@ mod parser_test {
             ("(= 1 2 3)", "=", [1.expect(), 2.expect(), 3.expect()]),
             ("(< 1 2 3)", "<", [1.expect(), 2.expect(), 3.expect()]),
             ("(> 1 2 3)", ">", [1.expect(), 2.expect(), 3.expect()]),
+            ("(! true 2 3)", "!", [true.expect(), 2.expect(), 3.expect()]),
         ];
 
         for (input, expected_operator, expected_operands) in prefix_test {
@@ -149,7 +148,84 @@ mod parser_test {
     }
 
     #[test]
+    fn test_array_expression() {
+        let tests = [
+            ("[1 2 3]", Expression::Integer(1), Expression::Integer(2), Expression::Integer(3)),
+            ("[1 7.4 3]", Expression::Integer(1), Expression::Float(7.4), Expression::Integer(3)),
+            ("[1 7.4 true]", Expression::Integer(1), Expression::Float(7.4), Expression::Boolean(true)),
+            ("[() 4 true]", Expression::SExpression([].into()), Expression::Integer(4), Expression::Boolean(true)),
+            ("[\"text\" 4 true]", Expression::String("text".into()), Expression::Integer(4), Expression::Boolean(true)),
+            ("[\"text\" \" \" \"string\"]", Expression::String("text".into()), Expression::String(" ".into()), Expression::String("string".into())),
+        ];
+
+
+        for (input, first, second, third) in tests {
+            let lexer = Lexer::from(input);
+            let parser = Parser::from(lexer);
+            let program = parser.parse_program().unwrap();
+
+            assert_eq!(1, program.nodes.len(), "Expected 1 node in program for input: {input}");
+
+            let Expression::Array(nodes) = &program.nodes[0].expression else {
+                panic!("Expected array-expression got={:?}", program.nodes[0].expression);
+            };
+            assert_eq!(3, nodes.len(), "input {input}");
+
+            assert_eq!(first, nodes[0].expression, "input {input}");
+            assert_eq!(second, nodes[1].expression, "input {input}");
+            assert_eq!(third, nodes[2].expression, "input {input}");
+        }
+    }
+
+    #[test]
+    fn test_array_index_expression() {
+        let input = "(@ 1 [1 2 3])";
+
+        let lexer = Lexer::from(input);
+        let parser = Parser::from(lexer);
+        let program = parser.parse_program().unwrap();
+
+        assert_eq!(1, program.nodes.len(), "Expected 1 node in program for input: {input}");
+
+        let Expression::Index(index, operand) = &program.nodes[0].expression else {
+            panic!("Expected index-expression got={:?}", program.nodes[0].expression);
+        };
+        assert_eq!(Expression::Integer(1), index.expression);
+
+        let Expression::Array(ref nodes) = operand.expression else {
+            panic!("Expected array-expression got={:?}", program.nodes[0].expression);
+        };
+
+        assert_eq!(3, nodes.len(), "input {input}");
+
+        assert_eq!(Expression::Integer(1), nodes[0].expression, "input {input}");
+        assert_eq!(Expression::Integer(2), nodes[1].expression, "input {input}");
+        assert_eq!(Expression::Integer(3), nodes[2].expression, "input {input}");
+
+        let input = "(@ 1 foobar)";
+
+        let lexer = Lexer::from(input);
+        let parser = Parser::from(lexer);
+        let program = parser.parse_program().unwrap();
+
+        assert_eq!(1, program.nodes.len(), "Expected 1 node in program for input: {input}");
+
+        let Expression::Index(index, operand) = &program.nodes[0].expression else {
+            panic!("Expected index-expression got={:?}", program.nodes[0].expression);
+        };
+        assert_eq!(Expression::Integer(1), index.expression);
+
+        let Expression::Identifier(ref identifier) = operand.expression else {
+            panic!("Expected identifier-expression got={:?}", program.nodes[0].expression);
+        };
+
+        assert_eq!("foobar", identifier.as_ref());
+    }
+
+    #[test]
     fn test_not_expression() {
+        // let tests = [
+        // ];
         todo!()
     }
 

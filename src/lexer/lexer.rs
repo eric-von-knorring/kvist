@@ -49,6 +49,7 @@ impl Lexer<'_> {
             '|' => self.create_token(TokenType::Pipe, self.current.literal()),
             '(' => self.create_token(TokenType::LParen, self.current.literal()),
             ')' => self.create_token(TokenType::RParen, self.current.literal()),
+            '@' => self.create_token(TokenType::At, self.current.literal()),
             '+' => self.create_token(TokenType::Plus, self.current.literal()),
             '-' => return self.read_minus(),
             '*' => self.create_token(TokenType::Asterisk, self.current.literal()),

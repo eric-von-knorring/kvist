@@ -28,7 +28,8 @@ impl Viewable for Object {
             Object::String(value) => format!("{}", value),
             Object::Array(values) => format!("[{}]", values.iter()
                 .map(|object | object.view())
-                .reduce(|acc, c| acc + ", " + &c)
+                // .reduce(|acc, c| acc + ", " + &c)
+                .reduce(|acc, c| acc + " " + &c)
                 .unwrap_or("".to_string())
             ),
             // Object::Null => "null".to_string(),

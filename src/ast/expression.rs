@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::ast::ast::{AST, Node};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Expression {
     SExpression(Box<[Node]>),
     Let(Box<Node>, Box<Node>),
@@ -11,6 +11,8 @@ pub enum Expression {
     Float(f64),
     Boolean(bool),
     String(Rc<str>),
+    Array(Box<[Node]>),
+    Index(Box<Node>, Box<Node>),
     Prefix(Rc<str>, Box<[Node]>)
 }
 
