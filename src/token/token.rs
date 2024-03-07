@@ -52,7 +52,7 @@ pub enum TokenType {
     Let,
     True,
     False,
-    // If,
+    If,
     // Else,
     // Return,
 }

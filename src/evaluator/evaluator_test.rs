@@ -69,6 +69,10 @@ mod test {
             ("(!true)", false),
             ("(! (false))", true),
             ("(! (true))", false),
+            ("(! 0)", true),
+            ("(! 1)", false),
+            ("(! 0.0)", true),
+            ("(! 1.1)", false),
             ("(=)", false),
             ("(= 1)", true),
             ("(= 1 1)", true),
@@ -166,6 +170,28 @@ mod test {
         for (input, expected) in tests {
             let evaluated = apply_eval(input).unwrap();
             assert_eq!(expected, evaluated);
+        }
+    }
+
+    #[test]
+    fn test_if_expression() {
+        let tests = [
+            ("(if (true) \"hello\")", Object::String(Rc::from("hello"))),
+            ("(if (false) \"hello\")", Object::Boolean(false)),
+            ("(let (a 7))(if (! (= 1 2)) a)", Object::Integer(7)),
+            ("(if (true) 1)", Object::Integer(1)),
+            ("(if (false) 1)", Object::Boolean(false)),
+            ("(if (0) 1)", Object::Integer(0)),
+            ("(if (0.0) 1)", Object::Float(0.)),
+            ("(if (< 3 4) 1 2)", Object::Integer(1)),
+            ("(if (< 4 3) 1 2)", Object::Integer(2)),
+            ("(if (> 4 3) (+ 3 3) (* 3 3))", Object::Integer(6)),
+            ("(if (> 3 4) (+ 3 3) (* 3 3))", Object::Integer(9)),
+        ];
+
+        for (input, expected) in tests {
+            let evaluated = apply_eval(input).unwrap();
+            assert_eq!(expected, evaluated, "Failed to evaulte: {input}");
         }
     }
 

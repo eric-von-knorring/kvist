@@ -35,6 +35,7 @@ impl Eval for Node {
             Expression::Array(nodes) => eval_array_expression(nodes, environment),
             Expression::Index(index, operands) => eval_index_expression(index.eval(environment)?, operands.eval(environment)?),
             Expression::Prefix(operator, operands) => eval_prefix_expression(&operator, &operands, environment),
+            Expression::If(condition, consequence, alternative) => eval_if_expression(condition, consequence, alternative, environment),
         }.map_err(|err| format!("row: {}, col: {}, {err}", self.token.row, self.token.col))
     }
 }
@@ -68,6 +69,18 @@ fn eval_let(identifier: &Node, value: &Node, environment: &mut Environment) -> R
     environment.set(identifier.clone(), value.clone());
 
     Ok(value)
+}
+
+fn eval_if_expression(condition: &Box<Node>, consequence: &Box<Node>, alternative: &Option<Box<Node>>, environment: &mut Environment) -> Result<Object, String> {
+    let condition = condition.eval(environment)?;
+
+    return if is_truthy(condition.clone()) {
+        consequence.eval(environment)
+    } else if let Some(alternative) = alternative {
+        alternative.eval(environment)
+    } else {
+        condition.into()
+    }
 }
 
 fn eval_identifier(identifier: &Rc<str>, environment: &mut Environment) -> Result<Object, String> {
@@ -310,7 +323,7 @@ fn is_truthy(object: Object) -> bool {
         Object::Boolean(true) => true,
         Object::Boolean(false)
         | Object::Integer(0) => false,
-        Object::Float(value) => value == 0.0,
+        Object::Float(value) => value != 0.0,
         _ => true,
     }
 }

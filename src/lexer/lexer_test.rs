@@ -50,6 +50,7 @@ mod test {
         \"This is a text\"\
         [ ! < > = ] \
         (@ 1 [1 2 3])\
+        (if (true) (+ 1 1)) \
         ";
 
         let expected = [
@@ -124,6 +125,17 @@ mod test {
             (TokenType::Int, "2"),
             (TokenType::Int, "3"),
             (TokenType::RBracket, "]"),
+            (TokenType::RParen, ")"),
+            (TokenType::LParen, "("),
+            (TokenType::If, "if"),
+            (TokenType::LParen, "("),
+            (TokenType::True, "true"),
+            (TokenType::RParen, ")"),
+            (TokenType::LParen, "("),
+            (TokenType::Plus, "+"),
+            (TokenType::Int, "1"),
+            (TokenType::Int, "1"),
+            (TokenType::RParen, ")"),
             (TokenType::RParen, ")"),
             (TokenType::EOF, ""),
         ];

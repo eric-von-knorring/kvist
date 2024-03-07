@@ -223,10 +223,96 @@ mod parser_test {
     }
 
     #[test]
-    fn test_not_expression() {
-        // let tests = [
-        // ];
-        todo!()
+    fn test_if_expression() {
+        let input = "(if (< 1 2) x)";
+
+        let lexer = Lexer::from(input);
+        let parser = Parser::from(lexer);
+        let program = parser.parse_program().unwrap();
+
+        assert_eq!(1, program.nodes.len(), "Expected 1 node in program for input: {input}");
+        let Expression::If(condition, consequence, None) = &program.nodes[0].expression else {
+            panic!("Expected if-expression with no alternative got={:?}", program.nodes[0].expression);
+        };
+
+        let Expression::Prefix(ref prefix, ref operands) = condition.expression else {
+            panic!("Expected condition got {condition:?}");
+        };
+
+        assert_eq!("<", prefix.as_ref());
+        assert_nodes([1.expect(), 2.expect()].as_ref(), operands.as_ref());
+
+        let Expression::Identifier(ref ident) = consequence.expression else {
+            panic!("Expected identifier got {consequence:?}");
+        };
+
+        assert_eq!("x", ident.as_ref());
+    }
+
+    #[test]
+    fn test_if_else_expression() {
+        let input = "(if (< 1 2) x y)";
+
+        let lexer = Lexer::from(input);
+        let parser = Parser::from(lexer);
+        let program = parser.parse_program().unwrap();
+
+        assert_eq!(1, program.nodes.len(), "Expected 1 node in program for input: {input}");
+        let Expression::If(condition, consequence, Some(alternative)) = &program.nodes[0].expression else {
+            panic!("Expected if-expression with alternative got={:?}", program.nodes[0].expression);
+        };
+
+        let Expression::Prefix(ref prefix, ref operands) = condition.expression else {
+            panic!("Expected condition got {condition:?}");
+        };
+
+        assert_eq!("<", prefix.as_ref());
+        assert_nodes([1.expect(), 2.expect()].as_ref(), operands.as_ref());
+
+        let Expression::Identifier(ref ident) = consequence.expression else {
+            panic!("Expected identifier got {consequence:?}");
+        };
+
+        assert_eq!("x", ident.as_ref());
+
+        let Expression::Identifier(ref ident) = alternative.expression else {
+            panic!("Expected identifier got {consequence:?}");
+        };
+
+        assert_eq!("y", ident.as_ref());
+    }
+
+    #[test]
+    fn test_integer_literal_if_else_expression() {
+        let input = "(if (< 1 2) 1 2)";
+
+        let lexer = Lexer::from(input);
+        let parser = Parser::from(lexer);
+        let program = parser.parse_program().unwrap();
+
+        assert_eq!(1, program.nodes.len(), "Expected 1 node in program for input: {input}");
+        let Expression::If(condition, consequence, Some(alternative)) = &program.nodes[0].expression else {
+            panic!("Expected if-expression with alternative got={:?}", program.nodes[0].expression);
+        };
+
+        let Expression::Prefix(ref prefix, ref operands) = condition.expression else {
+            panic!("Expected condition got {condition:?}");
+        };
+
+        assert_eq!("<", prefix.as_ref());
+        assert_nodes([1.expect(), 2.expect()].as_ref(), operands.as_ref());
+
+        let Expression::Integer(ref value) = consequence.expression else {
+            panic!("Expected identifier got {consequence:?}");
+        };
+
+        assert_eq!(1, *value);
+
+        let Expression::Integer(ref value) = alternative.expression else {
+            panic!("Expected identifier got {consequence:?}");
+        };
+
+        assert_eq!(2, *value);
     }
 
     enum Expected {

@@ -108,6 +108,7 @@ impl Parser<'_> {
     fn prefix_parse(&mut self) -> Option<Node> {
         match self.current_token.token_type {
             TokenType::Let => self.parse_let(),
+            TokenType::If => self.parse_if(),
             TokenType::Int => self.parse_integer_literal(),
             TokenType::Float => self.parse_float_literal(),
             TokenType::String => self.parse_string_literal().into(),
@@ -164,6 +165,23 @@ impl Parser<'_> {
             expression: Expression::Let(identifier.into(), value.into()),
             token: current,
         })
+    }
+
+    fn parse_if(&mut self) -> Option<Node>{
+        let current = self.next_token();
+
+        let condition = self.parse_expression()?;
+        let consequence = self.parse_expression()?;
+        let mut alternative = None;
+
+        if !self.current_token_is(TokenType::RParen) {
+            alternative = Box::from(self.parse_expression()?).into()
+        }
+
+        Node {
+            expression: Expression::If(condition.into(), consequence.into(), alternative),
+            token: current
+        }.into()
     }
 
     fn parse_identifier(&mut self) -> Node {

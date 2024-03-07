@@ -107,6 +107,7 @@ impl Lexer<'_> {
             "fn" => TokenType::Function,
             "true" => TokenType::True,
             "false" => TokenType::False,
+            "if" => TokenType::If,
             _ => TokenType::Ident,
         }
     }
