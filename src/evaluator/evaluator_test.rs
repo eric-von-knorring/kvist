@@ -191,7 +191,24 @@ mod test {
 
         for (input, expected) in tests {
             let evaluated = apply_eval(input).unwrap();
-            assert_eq!(expected, evaluated, "Failed to evaulte: {input}");
+            assert_eq!(expected, evaluated, "Failed to evaluate: {input}");
+        }
+    }
+
+    #[test]
+    fn test_while_expression() {
+        let tests = [
+            ("(while (false) \"hello\")", Object::Boolean(false)),
+            ("(while (0) 1)", Object::Integer(0)),
+            ("(while (0.0) 1)", Object::Float(0.)),
+            ("(let (res 0)) (let (run 5)) (while (run) ((let (res (+ res 2))) (let (run (- run 1))) )) (res)", Object::Integer(10)),
+            ("(let (res 0)) (let (run 5)) (while (> run 2) ((let (res (+ res 2))) (let (run (- run 1))) )) (res)", Object::Integer(6)),
+            ("(let (x 3)) (while (let (x (- x 1))))", Object::Integer(0)),
+        ];
+
+        for (input, expected) in tests {
+            let evaluated = apply_eval(input).unwrap();
+            assert_eq!(expected, evaluated, "Failed to evaluate: {input}");
         }
     }
 

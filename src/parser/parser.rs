@@ -72,6 +72,8 @@ impl Parser<'_> {
             Some(self.next_token())
         } else {
             self.peek_error(token_type);
+            // prevent infinite loops on error
+            self.next_token();
             None
         }
     }
@@ -109,6 +111,7 @@ impl Parser<'_> {
         match self.current_token.token_type {
             TokenType::Let => self.parse_let(),
             TokenType::If => self.parse_if(),
+            TokenType::While => self.parse_while(),
             TokenType::Int => self.parse_integer_literal(),
             TokenType::Float => self.parse_float_literal(),
             TokenType::String => self.parse_string_literal().into(),
@@ -167,6 +170,7 @@ impl Parser<'_> {
         })
     }
 
+
     fn parse_if(&mut self) -> Option<Node>{
         let current = self.next_token();
 
@@ -180,6 +184,21 @@ impl Parser<'_> {
 
         Node {
             expression: Expression::If(condition.into(), consequence.into(), alternative),
+            token: current
+        }.into()
+    }
+
+    fn parse_while(&mut self) -> Option<Node> {
+        let current = self.next_token();
+        let condition = self.parse_expression()?;
+
+        let mut loop_expression = None;
+        if !self.current_token_is(TokenType::RParen) {
+            loop_expression = Box::from(self.parse_expression()?).into()
+        }
+
+        Node {
+            expression: Expression::While(condition.into(), loop_expression),
             token: current
         }.into()
     }

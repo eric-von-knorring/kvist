@@ -47,12 +47,10 @@ pub enum TokenType {
 
 
     // Keywords
-    // Null,
     Function,
     Let,
     True,
     False,
     If,
-    // Else,
-    // Return,
+    While,
 }

@@ -1,0 +1,14 @@
+#!/usr/bin/env kvist
+
+(let (a 0))
+
+
+(loop 
+    (let (a (+ 1 a))
+    (< a 10)))
+
+(loop |a b| (rec 1 2)) 
+
+(loop 'curl http://localhost:8080/health')
+
+

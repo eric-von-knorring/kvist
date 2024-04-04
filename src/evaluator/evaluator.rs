@@ -36,6 +36,8 @@ impl Eval for Node {
             Expression::Index(index, operands) => eval_index_expression(index.eval(environment)?, operands.eval(environment)?),
             Expression::Prefix(operator, operands) => eval_prefix_expression(&operator, &operands, environment),
             Expression::If(condition, consequence, alternative) => eval_if_expression(condition, consequence, alternative, environment),
+            Expression::While(condition, None) => eval_while_expression(condition, environment),
+            Expression::While(condition, Some(loop_body)) => eval_while_body_expression(condition, loop_body, environment),
         }.map_err(|err| format!("row: {}, col: {}, {err}", self.token.row, self.token.col))
     }
 }
@@ -74,7 +76,7 @@ fn eval_let(identifier: &Node, value: &Node, environment: &mut Environment) -> R
 fn eval_if_expression(condition: &Box<Node>, consequence: &Box<Node>, alternative: &Option<Box<Node>>, environment: &mut Environment) -> Result<Object, String> {
     let condition = condition.eval(environment)?;
 
-    return if is_truthy(condition.clone()) {
+    return if is_truthy(&condition) {
         consequence.eval(environment)
     } else if let Some(alternative) = alternative {
         alternative.eval(environment)
@@ -82,6 +84,26 @@ fn eval_if_expression(condition: &Box<Node>, consequence: &Box<Node>, alternativ
         condition.into()
     }
 }
+
+fn eval_while_expression(condition: &Box<Node>, environment: &mut Environment) -> Result<Object, String> {
+    loop {
+        let condition = condition.eval(environment)?;
+        if !is_truthy(&condition) {
+            return condition.into();
+        }
+    }
+}
+
+fn eval_while_body_expression(condition: &Box<Node>, loop_body: &Box<Node>, environment: &mut Environment) -> Result<Object, String> {
+    loop {
+        let condition = condition.eval(environment)?;
+        if !is_truthy(&condition) {
+            return condition.into();
+        }
+        loop_body.eval(environment)?;
+    }
+}
+
 
 fn eval_identifier(identifier: &Rc<str>, environment: &mut Environment) -> Result<Object, String> {
     if let Some(value) = environment.get(identifier) {
@@ -314,16 +336,16 @@ fn not_operator(operands: &[Node], environment: &mut Environment) -> Result<Obje
     }
 
     if let Some(node) = operands.get(0) {
-        Object::Boolean(!is_truthy(node.eval(environment)?))
+        Object::Boolean(!is_truthy(&node.eval(environment)?))
     } else { Object::Boolean(true) }.into()
 }
 
-fn is_truthy(object: Object) -> bool {
+fn is_truthy(object: &Object) -> bool {
     match object {
         Object::Boolean(true) => true,
         Object::Boolean(false)
         | Object::Integer(0) => false,
-        Object::Float(value) => value != 0.0,
+        Object::Float(value) => *value != 0.0,
         _ => true,
     }
 }
@@ -334,7 +356,7 @@ impl<T> From<Object> for Result<Object, T> {
     }
 }
 
-trait Single <T>{
+trait Single <T> {
     fn single(&self) -> Option<&T>;
 }
 

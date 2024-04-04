@@ -51,6 +51,7 @@ mod test {
         [ ! < > = ] \
         (@ 1 [1 2 3])\
         (if (true) (+ 1 1)) \
+        (while (false) (\"hello\"))\
         ";
 
         let expected = [
@@ -137,6 +138,15 @@ mod test {
             (TokenType::Int, "1"),
             (TokenType::RParen, ")"),
             (TokenType::RParen, ")"),
+            (TokenType::LParen, "("),
+            (TokenType::While, "while"),
+            (TokenType::LParen, "("),
+            (TokenType::False, "false"),
+            (TokenType::RParen, ")"),
+            (TokenType::LParen, "("),
+            (TokenType::String, "hello"),
+            (TokenType::RParen, ")"),
+            (TokenType::RParen, ")"),
             (TokenType::EOF, ""),
         ];
 
@@ -144,7 +154,7 @@ mod test {
         let mut lexer = Lexer::from(input);
         for (token, literal) in expected {
             let result = lexer.next_token();
-            println!("{:?}", result);
+            // println!("{:?}", result);
             assert_eq!(token, result.token_type);
             assert_eq!(literal, &*result.literal);
         }

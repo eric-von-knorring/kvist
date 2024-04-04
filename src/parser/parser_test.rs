@@ -315,6 +315,42 @@ mod parser_test {
         assert_eq!(2, *value);
     }
 
+    #[test]
+    fn test_while_loop() {
+        let input = "(while (let (a 0)) \"test\")";
+
+        let lexer = Lexer::from(input);
+        let parser = Parser::from(lexer);
+        let program = parser.parse_program().unwrap();
+
+        assert_eq!(1, program.nodes.len(), "Expected 1 node in program for input: {input}");
+        let Expression::While(condition, Some(loop_body)) = &program.nodes[0].expression else {
+            panic!("Expected while-expression with alternative got={:?}", program.nodes[0].expression);
+        };
+
+        let Expression::Let(ref name, ref value) = condition.expression else {
+            panic!("Expected condition got {condition:?}");
+        };
+
+        let Expression::Identifier(ref name) = name.expression else {
+            panic!("Expected identifier got {name:?}");
+        };
+
+        assert_eq!("a", name.as_ref());
+
+        let Expression::Integer(ref value) = value.expression else {
+            panic!("Expected integer got {value:?}");
+        };
+
+        assert_eq!(0, *value);
+
+        let Expression::String(ref text) = loop_body.expression else {
+            panic!("Expected integer got {loop_body:?}");
+        };
+
+        assert_eq!("test", text.as_ref());
+    }
+
     enum Expected {
         // Integer(i64),
         Integer(i32),
