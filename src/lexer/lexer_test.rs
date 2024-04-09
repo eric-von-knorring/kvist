@@ -39,7 +39,7 @@ mod test {
     fn test_next_token() {
 
         let input = "\
-        (let (a 5) (b 10))\
+        (set (a 5) (b 10))\
         (fn |a, b| (+ a b))\
         (- z 3)\
         (true false)\
@@ -56,7 +56,7 @@ mod test {
 
         let expected = [
             (TokenType::LParen, "("),
-            (TokenType::Let, "let"),
+            (TokenType::Set, "set"),
             (TokenType::LParen, "("),
             (TokenType::Ident, "a"),
             (TokenType::Int, "5"),

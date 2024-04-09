@@ -6,11 +6,11 @@ mod parser_test {
     use crate::parser::parser::Parser;
 
     #[test]
-    fn test_let_expression() {
+    fn test_set_expression() {
         let tests = [
-            ("(let (x 5))", "x", 5.expect()),
-            ("(let (y true))", "y", true.expect()),
-            ("(let (foobar y))", "foobar", Expected::Identifier("y")),
+            ("(set (x 5))", "x", 5.expect()),
+            ("(set (y true))", "y", true.expect()),
+            ("(set (foobar y))", "foobar", Expected::Identifier("y")),
         ];
 
 
@@ -28,8 +28,8 @@ mod parser_test {
             //     panic!("Expected let-expression got={:?}", program.nodes[0].expression);
             // };
 
-            let Expression::Let(name, value) = &program.nodes[0].expression else {
-                panic!("Expected let-expression got={:?}", program.nodes[0].expression);
+            let Expression::Set(name, value) = &program.nodes[0].expression else {
+                panic!("Expected set-expression got={:?}", program.nodes[0].expression);
             };
 
             let Expression::Identifier(ref name) = name.expression else {
@@ -317,7 +317,7 @@ mod parser_test {
 
     #[test]
     fn test_while_loop() {
-        let input = "(while (let (a 0)) \"test\")";
+        let input = "(while (set (a 0)) \"test\")";
 
         let lexer = Lexer::from(input);
         let parser = Parser::from(lexer);
@@ -328,7 +328,7 @@ mod parser_test {
             panic!("Expected while-expression with alternative got={:?}", program.nodes[0].expression);
         };
 
-        let Expression::Let(ref name, ref value) = condition.expression else {
+        let Expression::Set(ref name, ref value) = condition.expression else {
             panic!("Expected condition got {condition:?}");
         };
 

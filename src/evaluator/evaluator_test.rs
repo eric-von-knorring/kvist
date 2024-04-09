@@ -164,7 +164,7 @@ mod test {
     fn test_array_index_operator() {
         let tests = [
             ("(@ 1 [\"one\" \"two\" \"three\"])", Object::String(Rc::from("two"))),
-            ("(let (foo [5 6 7]))(@ 1 foo)", Object::Integer(6)),
+            ("(set (foo [5 6 7]))(@ 1 foo)", Object::Integer(6)),
         ];
 
         for (input, expected) in tests {
@@ -178,7 +178,7 @@ mod test {
         let tests = [
             ("(if (true) \"hello\")", Object::String(Rc::from("hello"))),
             ("(if (false) \"hello\")", Object::Boolean(false)),
-            ("(let (a 7))(if (! (= 1 2)) a)", Object::Integer(7)),
+            ("(set (a 7))(if (! (= 1 2)) a)", Object::Integer(7)),
             ("(if (true) 1)", Object::Integer(1)),
             ("(if (false) 1)", Object::Boolean(false)),
             ("(if (0) 1)", Object::Integer(0)),
@@ -201,9 +201,9 @@ mod test {
             ("(while (false) \"hello\")", Object::Boolean(false)),
             ("(while (0) 1)", Object::Integer(0)),
             ("(while (0.0) 1)", Object::Float(0.)),
-            ("(let (res 0)) (let (run 5)) (while (run) ((let (res (+ res 2))) (let (run (- run 1))) )) (res)", Object::Integer(10)),
-            ("(let (res 0)) (let (run 5)) (while (> run 2) ((let (res (+ res 2))) (let (run (- run 1))) )) (res)", Object::Integer(6)),
-            ("(let (x 3)) (while (let (x (- x 1))))", Object::Integer(0)),
+            ("(set (res 0)) (set (run 5)) (while (run) ((set (res (+ res 2))) (set (run (- run 1))) )) (res)", Object::Integer(10)),
+            ("(set (res 0)) (set (run 5)) (while (> run 2) ((set (res (+ res 2))) (set (run (- run 1))) )) (res)", Object::Integer(6)),
+            ("(set (x 3)) (while (set (x (- x 1))))", Object::Integer(0)),
         ];
 
         for (input, expected) in tests {

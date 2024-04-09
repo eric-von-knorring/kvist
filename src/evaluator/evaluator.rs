@@ -26,7 +26,7 @@ impl Eval for Node {
     fn eval(&self, environment: &mut Environment) -> Result<Object, String> {
         match &self.expression {
             Expression::SExpression(nodes) => eval_s_expression(nodes, environment),
-            Expression::Let(identifier, value) => eval_let(identifier, value, environment),
+            Expression::Set(identifier, value) => eval_set(identifier, value, environment),
             Expression::Identifier(value) => eval_identifier(value, environment),
             Expression::Integer(value) => Object::Integer(*value).into(),
             Expression::Float(value) => Object::Float(*value).into(),
@@ -61,9 +61,9 @@ fn eval_s_expression(nodes: &[Node], environment: &mut Environment) -> Result<Ob
 }
 
 
-fn eval_let(identifier: &Node, value: &Node, environment: &mut Environment) -> Result<Object, String> {
+fn eval_set(identifier: &Node, value: &Node, environment: &mut Environment) -> Result<Object, String> {
     let Expression::Identifier(identifier) = &identifier.expression  else {
-        return Err(format!("Expected identifier for let-expression at row: {}, col: {}", identifier.token.row, identifier.token.col));
+        return Err(format!("Expected identifier for set-expression at row: {}, col: {}", identifier.token.row, identifier.token.col));
     };
 
     let value = value.eval(environment)?;

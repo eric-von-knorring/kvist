@@ -103,7 +103,7 @@ impl Lexer<'_> {
 
     fn identifier_token_type(&self, literal: &str) -> TokenType {
         match literal {
-            "let" => TokenType::Let,
+            "set" => TokenType::Set,
             "fn" => TokenType::Function,
             "true" => TokenType::True,
             "false" => TokenType::False,

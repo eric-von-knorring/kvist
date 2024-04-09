@@ -5,7 +5,7 @@ use crate::ast::ast::{AST, Node};
 #[derive(Debug, PartialEq)]
 pub enum Expression {
     SExpression(Box<[Node]>),
-    Let(Box<Node>, Box<Node>),
+    Set(Box<Node>, Box<Node>),
     Identifier(Rc<str>),
     Integer(i32),
     Float(f64),
@@ -22,7 +22,7 @@ impl Expression {
 
     pub fn string(&self, literal: &str) -> Box<str> {
         match self {
-            Expression::Let(name, value) => format!("{literal} {} = {}", name.string(), value.string()),
+            Expression::Set(name, value) => format!("{literal} {} = {}", name.string(), value.string()),
             _ => String::new(), //FIXME Remove
         }.into_boxed_str()
     }

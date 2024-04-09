@@ -109,7 +109,7 @@ impl Parser<'_> {
 
     fn prefix_parse(&mut self) -> Option<Node> {
         match self.current_token.token_type {
-            TokenType::Let => self.parse_let(),
+            TokenType::Set => self.parse_set(),
             TokenType::If => self.parse_if(),
             TokenType::While => self.parse_while(),
             TokenType::Int => self.parse_integer_literal(),
@@ -150,7 +150,7 @@ impl Parser<'_> {
         })
     }
 
-    fn parse_let(&mut self) -> Option<Node> {
+    fn parse_set(&mut self) -> Option<Node> {
         let current = self.expect_peek(TokenType::LParen)?;
 
         self.expect_peek(TokenType::Ident)?;
@@ -165,7 +165,7 @@ impl Parser<'_> {
         self.expect_peek(TokenType::RParen)?;
 
         Some(Node {
-            expression: Expression::Let(identifier.into(), value.into()),
+            expression: Expression::Set(identifier.into(), value.into()),
             token: current,
         })
     }
