@@ -1,11 +1,12 @@
 use std::rc::Rc;
 
-use crate::ast::ast::{AST, Node};
+use crate::ast::ast::Node;
 
 #[derive(Debug, PartialEq)]
 pub enum Expression {
     SExpression(Box<[Node]>),
-    Set(Box<Node>, Box<Node>),
+    // Set(Box<Node>, Box<Node>),
+    Set(Rc<[(Node, Node)]>),
     Identifier(Rc<str>),
     Integer(i32),
     Float(f64),
@@ -20,9 +21,9 @@ pub enum Expression {
 
 impl Expression {
 
-    pub fn string(&self, literal: &str) -> Box<str> {
+    pub fn string(&self, _literal: &str) -> Box<str> {
         match self {
-            Expression::Set(name, value) => format!("{literal} {} = {}", name.string(), value.string()),
+            // Expression::Set(name, value) => format!("{literal} {} = {}", name.string(), value.string()),
             _ => String::new(), //FIXME Remove
         }.into_boxed_str()
     }

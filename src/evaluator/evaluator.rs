@@ -7,7 +7,6 @@ use crate::object::object::{Object, Viewable};
 
 pub trait Eval {
     fn eval(&self, environment: &mut Environment) -> Result<Object, String>;
-
 }
 
 impl Eval for Program {
@@ -26,7 +25,7 @@ impl Eval for Node {
     fn eval(&self, environment: &mut Environment) -> Result<Object, String> {
         match &self.expression {
             Expression::SExpression(nodes) => eval_s_expression(nodes, environment),
-            Expression::Set(identifier, value) => eval_set(identifier, value, environment),
+            Expression::Set(variables) => eval_set(variables, environment),
             Expression::Identifier(value) => eval_identifier(value, environment),
             Expression::Integer(value) => Object::Integer(*value).into(),
             Expression::Float(value) => Object::Float(*value).into(),
@@ -48,7 +47,7 @@ fn eval_index_expression(index: Object, operand: Object) -> Result<Object, Strin
         (Object::Integer(index), Object::Array(array)) => array.get(index as usize)
             .map(|object| object.clone())
             .ok_or(format!("Array index out of bounds index was '{index}' but length was '{}'.", array.len())),
-        (index@ _, operand @ _) => Err(format!("Index type '{index}' not allowed on '{operand}'.")),
+        (index @ _, operand @ _) => Err(format!("Index type '{index}' not allowed on '{operand}'.")),
     }
 }
 
@@ -61,16 +60,19 @@ fn eval_s_expression(nodes: &[Node], environment: &mut Environment) -> Result<Ob
 }
 
 
-fn eval_set(identifier: &Node, value: &Node, environment: &mut Environment) -> Result<Object, String> {
-    let Expression::Identifier(identifier) = &identifier.expression  else {
-        return Err(format!("Expected identifier for set-expression at row: {}, col: {}", identifier.token.row, identifier.token.col));
-    };
+fn eval_set(variables: &Rc<[(Node, Node)]>, environment: &mut Environment) -> Result<Object, String> {
+    let mut result = Object::Unit;
+    for (identifier, value) in variables.iter() {
+        let Expression::Identifier(identifier) = &identifier.expression  else {
+            return Err(format!("Expected identifier for set-expression at row: {}, col: {}", identifier.token.row, identifier.token.col));
+        };
 
-    let value = value.eval(environment)?;
+        result = value.eval(environment)?;
 
-    environment.set(identifier.clone(), value.clone());
+        environment.set(identifier.clone(), result.clone());
+    }
 
-    Ok(value)
+    Ok(result)
 }
 
 fn eval_if_expression(condition: &Box<Node>, consequence: &Box<Node>, alternative: &Option<Box<Node>>, environment: &mut Environment) -> Result<Object, String> {
@@ -82,7 +84,7 @@ fn eval_if_expression(condition: &Box<Node>, consequence: &Box<Node>, alternativ
         alternative.eval(environment)
     } else {
         condition.into()
-    }
+    };
 }
 
 fn eval_while_expression(condition: &Box<Node>, environment: &mut Environment) -> Result<Object, String> {
@@ -115,7 +117,7 @@ fn eval_identifier(identifier: &Rc<str>, environment: &mut Environment) -> Resul
     return Err(format!("No binding for identifier '{}'", identifier));
 }
 
-fn eval_array_expression(nodes: &Box<[Node]>, environment: &mut Environment) -> Result<Object, String>{
+fn eval_array_expression(nodes: &Box<[Node]>, environment: &mut Environment) -> Result<Object, String> {
     let mut objects = Vec::new();
     for node in nodes.iter() {
         objects.push(node.eval(environment)?);
@@ -140,7 +142,7 @@ fn eval_prefix_expression(operator: &Rc<str>, operands: &[Node], environment: &m
 
 
 // fn plus_operator(left: Object, right: Object) -> Result<Object, String>{
-fn plus_operator(operands: &[Node], environment: &mut Environment) -> Result<Object, String>{
+fn plus_operator(operands: &[Node], environment: &mut Environment) -> Result<Object, String> {
     if operands.is_empty() {
         return Object::Integer(0).into();
     }
@@ -151,7 +153,7 @@ fn plus_operator(operands: &[Node], environment: &mut Environment) -> Result<Obj
         .map(|node| node.eval(environment))
         .reduce(|left, right| {
             match (left?, right?) {
-                (Object::Integer(left), Object::Integer(right)) => {Object::Integer(left + right).into()},
+                (Object::Integer(left), Object::Integer(right)) => { Object::Integer(left + right).into() }
 
                 (Object::Float(left), Object::Integer(right)) => Object::Float(left + f64::from(right)).into(),
                 (Object::Integer(left), Object::Float(right)) => Object::Float(f64::from(left) + right).into(),
@@ -164,7 +166,7 @@ fn plus_operator(operands: &[Node], environment: &mut Environment) -> Result<Obj
         }).unwrap_or(Err("Could not eval operator".to_string()))
 }
 
-fn minus_operator(operands: &[Node], environment: &mut Environment) -> Result<Object, String>{
+fn minus_operator(operands: &[Node], environment: &mut Environment) -> Result<Object, String> {
     if operands.is_empty() {
         return Object::Integer(0).into();
     }
@@ -174,7 +176,7 @@ fn minus_operator(operands: &[Node], environment: &mut Environment) -> Result<Ob
             Object::Integer(value) => Object::Integer(0 - value).into(),
             Object::Float(value) => Object::Float(0. - value).into(),
             _ => Err(format!("Type mismatch (- {object})")),
-        }
+        };
     }
     operands.iter()
         .map(|node| node.eval(environment))
@@ -199,7 +201,7 @@ fn multiply_operator(operands: &[Node], environment: &mut Environment) -> Result
             (Object::Float(left), Object::Integer(right)) => Object::Float(left * f64::from(right)),
             (Object::Integer(left), Object::Float(right)) => Object::Float(f64::from(left) * right),
             (Object::Float(left), Object::Float(right)) => Object::Float(left * right),
-            (left @ _, right @ _)  => return Err(format!("Type mismatch (* {left} {right})")),
+            (left @ _, right @ _) => return Err(format!("Type mismatch (* {left} {right})")),
         };
     }
 
@@ -215,7 +217,7 @@ fn divide_operator(operands: &[Node], environment: &mut Environment) -> Result<O
             Object::Integer(value) => Object::Float(1. / f64::from(value)).into(),
             Object::Float(value) => Object::Float(value).into(),
             object @ _ => Err(format!("Type mismatch (/ {object})"))
-        }
+        };
     }
 
     let mut result = operands[0].eval(environment)?;
@@ -227,7 +229,7 @@ fn divide_operator(operands: &[Node], environment: &mut Environment) -> Result<O
             (Object::Float(left), Object::Integer(right)) => Object::Float(left / f64::from(right)),
             (Object::Integer(left), Object::Float(right)) => Object::Float(f64::from(left) / right),
             (Object::Float(left), Object::Float(right)) => Object::Float(left / right),
-            (left @ _, right @ _)  => return Err(format!("Type mismatch (/ {left} {right})")),
+            (left @ _, right @ _) => return Err(format!("Type mismatch (/ {left} {right})")),
         }
     }
 
@@ -244,7 +246,7 @@ fn no_truncating_division(left: i32, right: i32) -> Object {
 
 fn lesser_then_operator(operands: &[Node], environment: &mut Environment) -> Result<Object, String> {
     if operands.len() <= 1 {
-        return Object::Boolean(operands.len() == 1).into()
+        return Object::Boolean(operands.len() == 1).into();
     }
     // operands.iter()
     //     .map(|node| node.eval(environment))
@@ -267,15 +269,16 @@ fn lesser_then_operator(operands: &[Node], environment: &mut Environment) -> Res
             (Object::Float(left), Object::Integer(right)) => *left < f64::from(*right),
             (Object::Integer(left), Object::Float(right)) => f64::from(*left) < *right,
             (Object::Float(left), Object::Float(right)) => left < right,
-            (left @ _, right @ _)  => return Err(format!("Type mismatch (< {left} {right})")),
+            (left @ _, right @ _) => return Err(format!("Type mismatch (< {left} {right})")),
         };
         left = right;
     }
     return Object::Boolean(result).into();
 }
+
 fn greater_then_operator(operands: &[Node], environment: &mut Environment) -> Result<Object, String> {
     if operands.len() <= 1 {
-        return Object::Boolean(operands.len() == 1).into()
+        return Object::Boolean(operands.len() == 1).into();
     }
     // operands.iter()
     //     .map(|node| node.eval(environment))
@@ -297,7 +300,7 @@ fn greater_then_operator(operands: &[Node], environment: &mut Environment) -> Re
             (Object::Float(left), Object::Integer(right)) => *left > f64::from(*right),
             (Object::Integer(left), Object::Float(right)) => f64::from(*left) > *right,
             (Object::Float(left), Object::Float(right)) => left > right,
-            (left @ _, right @ _)  => return Err(format!("Type mismatch (> {left} {right})")),
+            (left @ _, right @ _) => return Err(format!("Type mismatch (> {left} {right})")),
         };
         left = right;
     }
@@ -306,7 +309,7 @@ fn greater_then_operator(operands: &[Node], environment: &mut Environment) -> Re
 
 fn equals_operator(operands: &[Node], environment: &mut Environment) -> Result<Object, String> {
     if operands.len() <= 1 {
-        return Object::Boolean(operands.len() == 1).into()
+        return Object::Boolean(operands.len() == 1).into();
     }
 
     let mut result = true;
@@ -318,7 +321,7 @@ fn equals_operator(operands: &[Node], environment: &mut Environment) -> Result<O
             (Object::Float(left), Object::Integer(right)) => *left == f64::from(*right),
             (Object::Integer(left), Object::Float(right)) => f64::from(*left) == *right,
             (Object::Float(left), Object::Float(right)) => left == right,
-            (left @ _, right @ _)  => return Err(format!("Type mismatch (= {left} {right})")),
+            (left @ _, right @ _) => return Err(format!("Type mismatch (= {left} {right})")),
         };
         left = right;
     }
@@ -332,7 +335,7 @@ fn not_operator(operands: &[Node], environment: &mut Environment) -> Result<Obje
     //     _ =>  todo!(),
     // }
     if operands.len() > 1 {
-        return Err(format!( "Operator ! expects only 1 operand got {}", operands.len()));
+        return Err(format!("Operator ! expects only 1 operand got {}", operands.len()));
     }
 
     if let Some(node) = operands.get(0) {
@@ -356,7 +359,7 @@ impl<T> From<Object> for Result<Object, T> {
     }
 }
 
-trait Single <T> {
+trait Single<T> {
     fn single(&self) -> Option<&T>;
 }
 

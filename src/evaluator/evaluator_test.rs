@@ -212,6 +212,20 @@ mod test {
         }
     }
 
+    #[test]
+    fn test_set_expression() {
+        let tests = [
+            ("(set (x 3)) (x)", Object::Integer(3)),
+            ("(set (x 3) (y 7)) (x)", Object::Integer(3)),
+            ("(set (x 3) (y 7)) (y)", Object::Integer(7)),
+        ];
+
+        for (input, expected) in tests {
+            let evaluated = apply_eval(input).unwrap();
+            assert_eq!(expected, evaluated, "Failed to evaluate: {input}");
+        }
+    }
+
     fn apply_eval(input: &str) -> Result<Object, String> {
         // let program = Parser::new(Lexer::new(input)).parse_program();
         let lexer = Lexer::from(input);

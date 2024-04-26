@@ -28,8 +28,13 @@ mod parser_test {
             //     panic!("Expected let-expression got={:?}", program.nodes[0].expression);
             // };
 
-            let Expression::Set(name, value) = &program.nodes[0].expression else {
+            // let Expression::Set(name, value) = &program.nodes[0].expression else {
+            let Expression::Set(variables) = &program.nodes[0].expression else {
                 panic!("Expected set-expression got={:?}", program.nodes[0].expression);
+            };
+
+            let Some((name, value)) = variables.first() else {
+                panic!("Expected name and value");
             };
 
             let Expression::Identifier(ref name) = name.expression else {
@@ -265,7 +270,6 @@ mod parser_test {
         let Expression::Prefix(ref prefix, ref operands) = condition.expression else {
             panic!("Expected condition got {condition:?}");
         };
-
         assert_eq!("<", prefix.as_ref());
         assert_nodes([1.expect(), 2.expect()].as_ref(), operands.as_ref());
 
@@ -328,8 +332,16 @@ mod parser_test {
             panic!("Expected while-expression with alternative got={:?}", program.nodes[0].expression);
         };
 
-        let Expression::Set(ref name, ref value) = condition.expression else {
-            panic!("Expected condition got {condition:?}");
+        // let Expression::Set(ref name, ref value) = condition.expression else {
+        //     panic!("Expected condition got {condition:?}");
+        // };
+
+        let Expression::Set(ref variables) = condition.expression else {
+            panic!("Expected set-expression got={:?}", program.nodes[0].expression);
+        };
+
+        let Some((ref name, ref value)) = variables.first() else {
+            panic!("Expected name and value");
         };
 
         let Expression::Identifier(ref name) = name.expression else {

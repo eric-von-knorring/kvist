@@ -98,11 +98,11 @@ impl Parser<'_> {
 
         let result = self.prefix_parse()?;
 
-        match  (in_parenthesis, self.current_token_is(TokenType::RParen)) {
+        match (in_parenthesis, self.current_token_is(TokenType::RParen)) {
             // Fixme return error
             (true, false) => return None,
-            (true, true) => {self.next_token();},
-            (false, _) => {},
+            (true, true) => { self.next_token(); }
+            (false, _) => {}
         };
         Some(result)
     }
@@ -153,25 +153,31 @@ impl Parser<'_> {
     fn parse_set(&mut self) -> Option<Node> {
         let current = self.expect_peek(TokenType::LParen)?;
 
-        self.expect_peek(TokenType::Ident)?;
+        let mut list = Vec::new();
 
-        let identifier = self.parse_identifier();
+        while self.current_token_is(TokenType::LParen) {
+            self.expect_peek(TokenType::Ident)?;
 
-        // println!("{:?}", self.current_token);
-        // FIXME, maybe an error should be returned here.
-        let value = self.parse_expression()?;
+            let identifier = self.parse_identifier();
 
-        // FIXME, should probably also be an error
-        self.expect_peek(TokenType::RParen)?;
+            // println!("{:?}", self.current_token);
+            // FIXME, maybe an error should be returned here.
+            let value = self.parse_expression()?;
+
+            list.push((identifier, value));
+            // FIXME, should probably also be an error
+            // self.expect_peek(TokenType::RParen)?;
+            self.next_token();
+        }
 
         Some(Node {
-            expression: Expression::Set(identifier.into(), value.into()),
+            expression: Expression::Set(list.into()),
             token: current,
         })
     }
 
 
-    fn parse_if(&mut self) -> Option<Node>{
+    fn parse_if(&mut self) -> Option<Node> {
         let current = self.next_token();
 
         let condition = self.parse_expression()?;
@@ -184,7 +190,7 @@ impl Parser<'_> {
 
         Node {
             expression: Expression::If(condition.into(), consequence.into(), alternative),
-            token: current
+            token: current,
         }.into()
     }
 
@@ -199,7 +205,7 @@ impl Parser<'_> {
 
         Node {
             expression: Expression::While(condition.into(), loop_expression),
-            token: current
+            token: current,
         }.into()
     }
 
