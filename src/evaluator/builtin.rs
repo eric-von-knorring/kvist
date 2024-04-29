@@ -8,11 +8,11 @@ pub fn builtins(name: &str) -> Option<Object> {
         "args" => Some(Object::Builtin(args)),
         "println" => Some(Object::Builtin(println)),
         "readln" => Some(Object::Builtin(readln)),
-        // "len" => Some(Object::Builtin(len)),
-        // "first" => Some(Object::Builtin(first)),
-        // "last" => Some(Object::Builtin(last)),
-        // "rest" => Some(Object::Builtin(rest)),
-        // "push" => Some(Object::Builtin(push)),
+        "len" => Some(Object::Builtin(len)),
+        "first" => Some(Object::Builtin(first)),
+        "last" => Some(Object::Builtin(last)),
+        "rest" => Some(Object::Builtin(rest)),
+        "push" => Some(Object::Builtin(push)),
         // "int" => Some(Object::Builtin(int)),
         &_ => None,
     }
@@ -56,3 +56,66 @@ fn readln(args: Box<[Object]>) -> Result<Object, String> {
     Ok(Object::String(line.trim().into()))
 }
 
+fn len(args: Box<[Object]>) -> Result<Object, String> {
+    if args.len() != 1 {
+        return Err(format!("wrong number of arguments. got={}, want=1", args.len()));
+    }
+    match &args[0] {
+        Object::String(string) => Ok(Object::Integer(string.len() as i32)),
+        Object::Array(array) => Ok(Object::Integer(array.len() as i32)),
+        _ => Err(format!("argument to `len` not supported, got {}", &args[0])),
+    }
+}
+
+fn first(args: Box<[Object]>) -> Result<Object, String> {
+    if args.len() != 1 {
+        return Err(format!("wrong number of arguments. got={}, want=1", args.len()));
+    }
+
+    match &args[0] {
+        Object::Array(array) => Ok(array.first().map(|object| object.clone()).unwrap_or(Object::Unit)),
+        _ => Err(format!("argument to `first` must be Array, got {}", &args[0])),
+    }
+}
+
+fn last(args: Box<[Object]>) -> Result<Object, String> {
+    if args.len() != 1 {
+        return Err(format!("wrong number of arguments. got={}, want=1", args.len()));
+    }
+
+    match &args[0] {
+        Object::Array(array) => Ok(array.last().map(|object| object.clone()).unwrap_or(Object::Unit)),
+        _ => Err(format!("argument to `last` must be Array, got {}", &args[0])),
+    }
+}
+
+fn rest(args: Box<[Object]>) -> Result<Object, String> {
+    if args.len() != 1 {
+        return Err(format!("wrong number of arguments. got={}, want=1", args.len()));
+    }
+
+    match &args[0] {
+        Object::Array(array) => Ok(
+            array.get(1..)
+                .map(|slice| Object::Array(Rc::from(slice)))
+                .unwrap_or(Object::Array([].into()))
+        ),
+        _ => Err(format!("argument to `rest` must be Array, got {}", &args[0])),
+    }
+}
+
+fn push(args: Box<[Object]>) -> Result<Object, String> {
+    if args.len() != 2 {
+        return Err(format!("wrong number of arguments. got={}, want=2", args.len()));
+    }
+
+    match &args[0] {
+        Object::Array(array) => {
+            let mut new = array.to_vec();
+            new.push(args[1].clone());
+
+            return Ok(Object::Array(Rc::from(new)));
+        },
+        _ => Err(format!("argument to `push` must be Array, got {}", &args[0])),
+    }
+}
