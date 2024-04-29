@@ -50,6 +50,42 @@ mod parser_test {
     }
 
     #[test]
+    fn test_section_expression() {
+        let tests = [
+            ("(§(set (x 5)))", "x", 5.expect()),
+            ("(§(set (y true)))", "y", true.expect()),
+        ];
+
+
+        for (input, expected_identifier, expected_value) in tests {
+            let lexer = Lexer::from(input);
+            let parser = Parser::from(lexer);
+
+            let program = parser.parse_program().unwrap();
+            assert_eq!(1, program.nodes.len(), "Expected 1 node in program for input: {input}");
+
+            let Expression::Section(set) = &program.nodes[0].expression else {
+                panic!("Expected section-expression got={:?}", program.nodes[0].expression);
+            };
+
+            let Expression::Set(ref variables) = set.expression else {
+                panic!("Expected set-expression got={:?}", program.nodes[0].expression);
+            };
+
+            let Some((name, value)) = variables.first() else {
+                panic!("Expected name and value");
+            };
+
+            let Expression::Identifier(ref name) = name.expression else {
+                panic!("Expected identifier-expression got={:?}", name.expression);
+            };
+
+            assert_eq!(expected_identifier, name.as_ref());
+            assert_expression(&expected_value, &value.expression);
+        }
+    }
+
+    #[test]
     fn test_parsing_prefix_expression() {
         let prefix_test = [
             ("(+ 1 2 3)", "+", [1.expect(), 2.expect(), 3.expect()]),

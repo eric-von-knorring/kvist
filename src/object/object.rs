@@ -13,6 +13,7 @@ pub enum Object {
     String(Rc<str>),
     Array(Rc<[Object]>),
     Function(Rc<[Node]>, Rc<Node>, Rc<Environment>),
+    Builtin(fn(Box<[Object]>) -> Result<Object, String>),
     // Null,
     Undefined,
 }
@@ -38,7 +39,8 @@ impl Viewable for Object {
             // Object::Null => "null".to_string(),
             Object::Undefined => "undefined".to_string(),
             // TODO proper formatted viewable
-            Object::Function(_, _, _) => "(fn)".to_string()
+            Object::Function(_, _, _) => "(fn)".to_string(),
+            Object::Builtin(_) => "(builtin)".to_string(),
         }
     }
 }
@@ -55,6 +57,7 @@ impl Display for Object {
             // Object::Null => write!(f, "Null"),
             Object::Undefined => write!(f, "Undefined"),
             Object::Function(_, _, _) => write!(f, "Function"),
+            Object::Builtin(_) => write!(f, "Builtin"),
         }
     }
 }

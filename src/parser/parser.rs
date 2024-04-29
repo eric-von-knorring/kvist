@@ -113,6 +113,7 @@ impl Parser<'_> {
             TokenType::If => self.parse_if(),
             TokenType::While => self.parse_while(),
             TokenType::Function => self.parse_function(),
+            TokenType::Section => self.parse_scoped_section(),
             TokenType::Int => self.parse_integer_literal(),
             TokenType::Float => self.parse_float_literal(),
             TokenType::String => self.parse_string_literal().into(),
@@ -236,6 +237,17 @@ impl Parser<'_> {
         }.into()
     }
 
+    fn parse_scoped_section(&mut self) -> Option<Node> {
+        let current = self.next_token();
+
+        let section = self.parse_expression()?;
+
+        Node {
+            expression: Expression::Section(section.into()),
+            token: current
+        }.into()
+    }
+
     fn parse_identifier(&mut self) -> Node {
         let token = self.next_token();
         Node {
@@ -315,9 +327,8 @@ impl Parser<'_> {
     }
 
     fn parse_index_operator(&mut self) -> Option<Node> {
-        // let current = self.next_token();
-        let current = self.expect_peek(TokenType::Int)?;
-        let index = self.parse_integer_literal()?;
+        let current = self.next_token();
+        let index = self.parse_expression()?;
         let operand = self.parse_expression()?;
 
         Node {
