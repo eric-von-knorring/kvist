@@ -1,6 +1,7 @@
 use std::fmt::{Display, Formatter};
 use std::rc::Rc;
 use crate::ast::ast::Node;
+use crate::object::environment::Environment;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Object {
@@ -11,7 +12,7 @@ pub enum Object {
     Boolean(bool),
     String(Rc<str>),
     Array(Rc<[Object]>),
-    Function(Rc<[Node]>, Rc<Node>),
+    Function(Rc<[Node]>, Rc<Node>, Rc<Environment>),
     // Null,
     Undefined,
 }
@@ -37,7 +38,7 @@ impl Viewable for Object {
             // Object::Null => "null".to_string(),
             Object::Undefined => "undefined".to_string(),
             // TODO proper formatted viewable
-            Object::Function(_, _) => "(fn)".to_string()
+            Object::Function(_, _, _) => "(fn)".to_string()
         }
     }
 }
@@ -53,7 +54,7 @@ impl Display for Object {
             Object::Array(_) => write!(f, "Array"),
             // Object::Null => write!(f, "Null"),
             Object::Undefined => write!(f, "Undefined"),
-            Object::Function(_, _) => write!(f, "Function"),
+            Object::Function(_, _, _) => write!(f, "Function"),
         }
     }
 }

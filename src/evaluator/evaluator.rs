@@ -37,7 +37,7 @@ impl Eval for Node {
             Expression::If(condition, consequence, alternative) => eval_if_expression(condition, consequence, alternative, environment),
             Expression::While(condition, None) => eval_while_expression(condition, environment),
             Expression::While(condition, Some(loop_body)) => eval_while_body_expression(condition, loop_body, environment),
-            Expression::Function(params, body) => Object::Function(params.clone(), body.clone()).into()
+            Expression::Function(params, body) => Object::Function(params.clone(), body.clone(), environment.clone().into()).into()
         }.map_err(|err| format!("row: {}, col: {}, {err}", self.token.row, self.token.col))
     }
 }
@@ -59,8 +59,8 @@ fn eval_s_expression(nodes: &[Node], environment: &mut Environment) -> Result<Ob
     };
 
     return match node.eval(environment) {
-        Ok(Object::Function(params, body)) => {
-            eval_function_call(params, nodes, body, environment)
+        Ok(Object::Function(params, body, env)) => {
+            eval_function_call(params, nodes, body, &mut Environment::from(env))
         }
         result @ Ok(_) => {
             if nodes.len() > 1 {

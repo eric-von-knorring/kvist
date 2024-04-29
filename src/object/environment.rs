@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 use crate::object::object::Object;
@@ -5,7 +6,7 @@ use crate::object::object::Object;
 #[derive(PartialEq, Debug, Clone)]
 pub struct Environment {
     // store: HashMap<String, Object>,
-    store: HashMap<Rc<str>, Object>,
+    store: Rc<RefCell<HashMap<Rc<str>, Object>>>,
     outer: Option<Rc<Environment>>,
 }
 
@@ -17,11 +18,10 @@ impl Environment {
         }
     }
 
-    // pub fn get(&self, name: &String) -> Option<Object> {
     pub fn get(&self, name: &Rc<str>) -> Option<Object> {
-        // let store = self.store.borrow();
+        let store = self.store.borrow();
 
-        match (self.store.get(name), &self.outer) {
+        match (store.get(name), &self.outer) {
             (result @ Some(_), _) => result.map(|object| object.clone()),
             (None, Some(outer)) => outer.get(name),
             (None, None) => None,
@@ -29,8 +29,7 @@ impl Environment {
     }
 
     pub fn set(&mut self, name: Rc<str>, object: Object) {
-        // self.store.borrow_mut().insert(name, object);
-        self.store.insert(name, object);
+        self.store.borrow_mut().insert(name, object);
     }
 }
 
