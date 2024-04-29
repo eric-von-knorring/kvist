@@ -37,6 +37,7 @@ impl Eval for Node {
             Expression::If(condition, consequence, alternative) => eval_if_expression(condition, consequence, alternative, environment),
             Expression::While(condition, None) => eval_while_expression(condition, environment),
             Expression::While(condition, Some(loop_body)) => eval_while_body_expression(condition, loop_body, environment),
+            Expression::Function(params, body) => Object::Function(params.clone(), body.clone()).into()
         }.map_err(|err| format!("row: {}, col: {}, {err}", self.token.row, self.token.col))
     }
 }
@@ -52,6 +53,43 @@ fn eval_index_expression(index: Object, operand: Object) -> Result<Object, Strin
 }
 
 fn eval_s_expression(nodes: &[Node], environment: &mut Environment) -> Result<Object, String> {
+    // let mut result = Object::Unit;
+    let Some(node) = nodes.get(0) else {
+        return Object::Unit.into();
+    };
+
+    return match node.eval(environment) {
+        Ok(Object::Function(params, body)) => {
+            eval_function_call(params, nodes, body, environment)
+        }
+        result @ Ok(_) => {
+            if nodes.len() > 1 {
+                eval_expression_nodes(&nodes[1..], environment)
+            } else { result }
+        }
+        err @ Err(_) => err,
+    };
+    // for node in nodes {
+    //     result = node.eval(environment)?;
+    // }
+    // return result.into();
+}
+
+fn eval_function_call(params: Rc<[Node]>, nodes: &[Node], body: Rc<Node>, environment: &mut Environment) -> Result<Object, String> {
+    for (index, param) in params.iter().enumerate() {
+        let Expression::Identifier(ref name) = param.expression else {
+            return Err(format!("Illegal function primate {param:?}"))
+        };
+        let value = nodes.get(index+1)
+            .ok_or(format!("Missing paramater value for {name}"))?
+            .eval(environment)?;
+        environment.set(name.clone(), value)
+    }
+
+    body.eval(environment)
+}
+
+fn eval_expression_nodes(nodes: &[Node], environment: &mut Environment) -> Result<Object, String> {
     let mut result = Object::Unit;
     for node in nodes {
         result = node.eval(environment)?;

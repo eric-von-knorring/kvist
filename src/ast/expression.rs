@@ -17,6 +17,7 @@ pub enum Expression {
     Prefix(Rc<str>, Box<[Node]>),
     If(Box<Node>, Box<Node>, Option<Box<Node>>),
     While(Box<Node>, Option<Box<Node>>),
+    Function(Rc<[Node]>, Rc<Node>),
 }
 
 impl Expression {

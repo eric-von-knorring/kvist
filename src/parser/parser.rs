@@ -112,6 +112,7 @@ impl Parser<'_> {
             TokenType::Set => self.parse_set(),
             TokenType::If => self.parse_if(),
             TokenType::While => self.parse_while(),
+            TokenType::Function => self.parse_function(),
             TokenType::Int => self.parse_integer_literal(),
             TokenType::Float => self.parse_float_literal(),
             TokenType::String => self.parse_string_literal().into(),
@@ -205,6 +206,32 @@ impl Parser<'_> {
 
         Node {
             expression: Expression::While(condition.into(), loop_expression),
+            token: current,
+        }.into()
+    }
+
+    fn parse_function(&mut self) -> Option<Node> {
+        let current = self.expect_peek(TokenType::Pipe)?;
+        self.next_token();
+
+        let mut parameters = Vec::new();
+
+        // while !self.peek_token_is(TokenType::Pipe) {
+        while !self.current_token_is(TokenType::Pipe) {
+            if !self.current_token_is(TokenType::Ident) {
+                // FIXME return error
+                return None;
+            }
+            let param = self.parse_identifier();
+            parameters.push(param)
+        }
+
+        self.next_token();
+
+        let body = self.parse_expression()?;
+
+        Node {
+            expression: Expression::Function(parameters.into(), body.into()),
             token: current,
         }.into()
     }
