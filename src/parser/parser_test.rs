@@ -322,6 +322,54 @@ mod parser_test {
             panic!("Expected identifier got {consequence:?}");
         };
 
+
+        assert_eq!("y", ident.as_ref());
+    }
+
+    #[test]
+    fn test_when_expression() {
+        let input = "(when (< 1 2) x (false) y)";
+
+        let lexer = Lexer::from(input);
+        let parser = Parser::from(lexer);
+        let program = parser.parse_program().unwrap();
+
+        assert_eq!(1, program.nodes.len(), "Expected 1 node in program for input: {input}");
+        let Expression::When(branches) = &program.nodes[0].expression else {
+            panic!("Expected if-expression with alternative got={:?}", program.nodes[0].expression);
+        };
+
+        let (ref condition, ref consequence) = branches[0];
+
+        let Expression::Prefix(ref prefix, ref operands) = condition.expression else {
+            panic!("Expected condition got {condition:?}");
+        };
+        assert_eq!("<", prefix.as_ref());
+        assert_nodes([1.expect(), 2.expect()].as_ref(), operands.as_ref());
+
+        let Expression::Identifier(ref ident) = consequence.expression else {
+            panic!("Expected identifier got {consequence:?}");
+        };
+
+        assert_eq!("x", ident.as_ref());
+
+        let (ref condition, ref consequence) = branches[1];
+
+        let Expression::SExpression(ref condition) = condition.expression else {
+            panic!("Expected expression got {condition:?}");
+        };
+
+        assert_eq!(1, condition.len());
+
+        let Expression::Boolean(ref boolean) = condition[0].expression else {
+            panic!("Expected boolean got {condition:?}");
+        };
+        assert_eq!(false, *boolean);
+
+        let Expression::Identifier(ref ident) = consequence.expression else {
+            panic!("Expected identifier got {consequence:?}");
+        };
+
         assert_eq!("y", ident.as_ref());
     }
 

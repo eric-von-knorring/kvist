@@ -15,5 +15,5 @@ Kvist is a sample scripting language for automating small tasks.
      - [x] rest
      - [x] push
  - [x] Add shebang support
- - [ ] Add when-expression
+ - [x] Add when-expression
  - [ ] Refactor error handling

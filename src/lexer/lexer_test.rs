@@ -52,6 +52,7 @@ mod test {
         (@ 1 [1 2 3])\
         (if (true) (+ 1 1)) \
         (while (false) (\"hello\"))\
+        (when (false) (\"hello\") (true) (\"world\"))\
         ";
 
         let expected = [
@@ -145,6 +146,21 @@ mod test {
             (TokenType::RParen, ")"),
             (TokenType::LParen, "("),
             (TokenType::String, "hello"),
+            (TokenType::RParen, ")"),
+            (TokenType::RParen, ")"),
+            (TokenType::LParen, "("),
+            (TokenType::When, "when"),
+            (TokenType::LParen, "("),
+            (TokenType::False, "false"),
+            (TokenType::RParen, ")"),
+            (TokenType::LParen, "("),
+            (TokenType::String, "hello"),
+            (TokenType::RParen, ")"),
+            (TokenType::LParen, "("),
+            (TokenType::True, "true"),
+            (TokenType::RParen, ")"),
+            (TokenType::LParen, "("),
+            (TokenType::String, "world"),
             (TokenType::RParen, ")"),
             (TokenType::RParen, ")"),
             (TokenType::EOF, ""),

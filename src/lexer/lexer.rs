@@ -39,6 +39,7 @@ impl<'a> From<&'a str> for Lexer<'a> {
 
 impl Lexer<'_> {
     pub fn next_token(&mut self) -> Token {
+        self.skip_comment();
         self.skip_whitespace();
         let token = match self.current {
             // '(' => Token { token_type: TokenType::LParen, row: self.row, col: self.col, literal: self.current.into()},
@@ -108,6 +109,7 @@ impl Lexer<'_> {
             "true" => TokenType::True,
             "false" => TokenType::False,
             "if" => TokenType::If,
+            "when" => TokenType::When,
             "while" => TokenType::While,
             _ => TokenType::Ident,
         }
@@ -207,6 +209,16 @@ impl Lexer<'_> {
                 self.col = 0;
             }
             self.read_char();
+            self.skip_comment();
+        }
+    }
+
+
+    fn skip_comment(&mut self) {
+        if self.current == '#' {
+            while self.current != '\n' && self.current != '\0'  && self.current != '\r' {
+                self.read_char()
+            }
         }
     }
 }

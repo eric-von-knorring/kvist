@@ -52,5 +52,6 @@ pub enum TokenType {
     True,
     False,
     If,
+    When,
     While,
 }

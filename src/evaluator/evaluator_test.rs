@@ -196,6 +196,28 @@ mod test {
     }
 
     #[test]
+    fn test_when_expression() {
+        let tests = [
+            ("(when (true) \"hello\")", Object::String(Rc::from("hello"))),
+            ("(when (false) \"hello\")", Object::Boolean(false)),
+            ("(set (a 7))(when (! (= 1 2)) a)", Object::Integer(7)),
+            ("(when (true) 1)", Object::Integer(1)),
+            ("(when (false) 1)", Object::Boolean(false)),
+            ("(when (0) 1)", Object::Integer(0)),
+            ("(when (0.0) 1)", Object::Float(0.)),
+            ("(when (< 3 4) 1 () 2)", Object::Integer(1)),
+            ("(when (< 4 3) 1 () 2)", Object::Integer(2)),
+            ("(when (> 4 3) (+ 3 3) () (* 3 3))", Object::Integer(6)),
+            ("(when (> 3 4) (+ 3 3) (true) (* 3 3))", Object::Integer(9)),
+        ];
+
+        for (input, expected) in tests {
+            let evaluated = apply_eval(input).unwrap();
+            assert_eq!(expected, evaluated, "Failed to evaluate: {input}");
+        }
+    }
+
+    #[test]
     fn test_while_expression() {
         let tests = [
             ("(while (false) \"hello\")", Object::Boolean(false)),

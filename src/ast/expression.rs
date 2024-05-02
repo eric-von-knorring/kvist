@@ -16,6 +16,7 @@ pub enum Expression {
     Index(Box<Node>, Box<Node>),
     Prefix(Rc<str>, Box<[Node]>),
     If(Box<Node>, Box<Node>, Option<Box<Node>>),
+    When(Box<[(Box<Node>, Box<Node>)]>),
     While(Box<Node>, Option<Box<Node>>),
     Function(Rc<[Node]>, Rc<Node>),
     Section(Box<Node>),

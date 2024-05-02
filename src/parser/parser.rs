@@ -111,6 +111,7 @@ impl Parser<'_> {
         match self.current_token.token_type {
             TokenType::Set => self.parse_set(),
             TokenType::If => self.parse_if(),
+            TokenType::When => self.parse_when(),
             TokenType::While => self.parse_while(),
             TokenType::Function => self.parse_function(),
             TokenType::Section => self.parse_scoped_section(),
@@ -192,6 +193,27 @@ impl Parser<'_> {
 
         Node {
             expression: Expression::If(condition.into(), consequence.into(), alternative),
+            token: current,
+        }.into()
+    }
+
+    fn parse_when(&mut self) -> Option<Node> {
+        let current = self.next_token();
+
+        let mut branches = Vec::new();
+
+        while !self.current_token_is(TokenType::RParen) {
+            let condition = self.parse_expression()?;
+            if self.current_token_is(TokenType::RParen) {
+                println!("Expected consequence for condition");
+                return None;
+            }
+            let consequence = self.parse_expression()?;
+            branches.push((condition.into(), consequence.into()))
+        }
+
+        Node {
+            expression: Expression::When(branches.into()),
             token: current,
         }.into()
     }

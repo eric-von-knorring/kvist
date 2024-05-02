@@ -36,6 +36,7 @@ impl Eval for Node {
             Expression::Index(index, operands) => eval_index_expression(index.eval(environment)?, operands.eval(environment)?),
             Expression::Prefix(operator, operands) => eval_prefix_expression(&operator, &operands, environment),
             Expression::If(condition, consequence, alternative) => eval_if_expression(condition, consequence, alternative, environment),
+            Expression::When(branches) => eval_when_expression(branches, environment),
             Expression::While(condition, None) => eval_while_expression(condition, environment),
             Expression::While(condition, Some(loop_body)) => eval_while_body_expression(condition, loop_body, environment),
             Expression::Function(params, body) => Object::Function(params.clone(), body.clone(), environment.clone().into()).into(),
@@ -135,6 +136,18 @@ fn eval_if_expression(condition: &Box<Node>, consequence: &Box<Node>, alternativ
     } else {
         condition.into()
     };
+}
+
+fn eval_when_expression(branches: &Box<[(Box<Node>, Box<Node>)]>, environment: &mut Environment) -> Result<Object, String> {
+    let mut condition_result = Object::Unit;
+
+    for (condition, consequence) in branches.iter() {
+        condition_result = condition.eval(environment)?;
+        if is_truthy(&condition_result) {
+            return consequence.eval(environment);
+        }
+    };
+    return condition_result.into();
 }
 
 fn eval_while_expression(condition: &Box<Node>, environment: &mut Environment) -> Result<Object, String> {
@@ -371,6 +384,7 @@ fn equals_operator(operands: &[Node], environment: &mut Environment) -> Result<O
             (Object::Float(left), Object::Integer(right)) => *left == f64::from(*right),
             (Object::Integer(left), Object::Float(right)) => f64::from(*left) == *right,
             (Object::Float(left), Object::Float(right)) => left == right,
+            (Object::String(left), Object::String(right)) => left == right,
             (left @ _, right @ _) => return Err(format!("Type mismatch (= {left} {right})")),
         };
         left = right;
