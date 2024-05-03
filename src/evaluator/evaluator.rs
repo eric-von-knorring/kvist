@@ -14,18 +14,16 @@ impl Eval for Program {
     fn eval(&self, environment: &mut Environment) -> Result<Object, String> {
         let mut result = Object::Integer(0);
         for node in self.nodes.iter() {
-            // println!("{:?}", node);
             result = node.eval(environment)?;
         }
         result.into()
-        // Ok(result)
     }
 }
 
 impl Eval for Node {
     fn eval(&self, environment: &mut Environment) -> Result<Object, String> {
         match &self.expression {
-            Expression::SExpression(nodes) => eval_s_expression(nodes, environment),
+            Expression::ExpressionLiteral(nodes) => eval_expression_literal(nodes, environment),
             Expression::Set(variables) => eval_set(variables, environment),
             Expression::Identifier(value) => eval_identifier(value, environment),
             Expression::Integer(value) => Object::Integer(*value).into(),
@@ -55,7 +53,7 @@ fn eval_index_expression(index: Object, operand: Object) -> Result<Object, Strin
     }
 }
 
-fn eval_s_expression(nodes: &[Node], environment: &mut Environment) -> Result<Object, String> {
+fn eval_expression_literal(nodes: &[Node], environment: &mut Environment) -> Result<Object, String> {
     let Some(node) = nodes.get(0) else {
         return Object::Unit.into();
     };
@@ -311,18 +309,6 @@ fn lesser_then_operator(operands: &[Node], environment: &mut Environment) -> Res
     if operands.len() <= 1 {
         return Object::Boolean(operands.len() == 1).into();
     }
-    // operands.iter()
-    //     .map(|node| node.eval(environment))
-    //     .reduce(|left, right| {
-    //         match (left?, right?) {
-    //             (Object::Integer(left), Object::Integer(right)) => Object::Boolean(left < right),
-    //             (Object::Float(left), Object::Integer(right)) => Object::Boolean(left < f64::from(right)),
-    //             (Object::Integer(left), Object::Float(right)) => Object::Boolean(f64::from(left) < right),
-    //             (Object::Float(left), Object::Float(right)) => Object::Boolean(left < right),
-    //             (left @ _, right @ _)  => return Err(format!("Type mismatch (< {left} {right})")),
-    //         }.into()
-    //     }).unwrap_or(Err("Could not eval operator".to_string()))
-    // return result.into();
     let mut result = true;
     let mut left = operands[0].eval(environment)?;
     for operand in operands[1..].iter() {
@@ -343,17 +329,6 @@ fn greater_then_operator(operands: &[Node], environment: &mut Environment) -> Re
     if operands.len() <= 1 {
         return Object::Boolean(operands.len() == 1).into();
     }
-    // operands.iter()
-    //     .map(|node| node.eval(environment))
-    //     .reduce(|left, right| {
-    //         match (left?, right?) {
-    //             (Object::Integer(left), Object::Integer(right)) => Object::Boolean(left > right),
-    //             (Object::Float(left), Object::Integer(right)) => Object::Boolean(left > f64::from(right)),
-    //             (Object::Integer(left), Object::Float(right)) => Object::Boolean(f64::from(left) > right),
-    //             (Object::Float(left), Object::Float(right)) => Object::Boolean(left > right),
-    //             (left @ _, right @ _)  => return Err(format!("Type mismatch (> {left} {right})")),
-    //         }.into()
-    //     }).unwrap_or(Err("Could not eval operator".to_string()))
     let mut result = true;
     let mut left = operands[0].eval(environment)?;
     for operand in operands[1..].iter() {
@@ -393,11 +368,6 @@ fn equals_operator(operands: &[Node], environment: &mut Environment) -> Result<O
 }
 
 fn not_operator(operands: &[Node], environment: &mut Environment) -> Result<Object, String> {
-    // match (operands.get(0), ) {
-    //     None => Object::Boolean(true).into(),
-    //     Some(node) => Object::Boolean(!is_truthy(node.eval(environment)?)).into(),
-    //     _ =>  todo!(),
-    // }
     if operands.len() > 1 {
         return Err(format!("Operator ! expects only 1 operand got {}", operands.len()));
     }

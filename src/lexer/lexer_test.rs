@@ -203,7 +203,31 @@ a b c
         let mut lexer = Lexer::from(input);
         for expect in expected {
             let result = lexer.next_token();
-            println!("{:?}", result);
+            assert_eq!(expect, (result.col, result.row))
+        }
+    }
+    #[test]
+    fn test_comments_and_row_count() {
+        let input =
+            "#!/usr/bin/env kvist
+(x)
+# This is text
+a b c
+";
+
+        let expected = [
+            (1, 2),
+            (2, 2),
+            (3, 2),
+            (1, 4),
+            (3, 4),
+            (5, 4),
+        ];
+
+        // let mut lexer = Lexer::new(input);
+        let mut lexer = Lexer::from(input);
+        for expect in expected {
+            let result = lexer.next_token();
             assert_eq!(expect, (result.col, result.row))
         }
     }

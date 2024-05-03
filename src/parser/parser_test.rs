@@ -137,7 +137,7 @@ mod parser_test {
     }
 
     #[test]
-    fn test_s_expression() {
+    fn test_expression_literal() {
         let input = "(1 2)";
         let lexer = Lexer::from(input);
         let parser = Parser::from(lexer);
@@ -145,7 +145,7 @@ mod parser_test {
 
         assert_eq!(1, program.nodes.len(), "Expected 1 node in program for input: {input}");
 
-        let Expression::SExpression(nodes) = &program.nodes[0].expression else {
+        let Expression::ExpressionLiteral(nodes) = &program.nodes[0].expression else {
             panic!("Expected prefix-expression got={:?}", program.nodes[0].expression);
         };
         assert_eq!(2, nodes.len());
@@ -162,7 +162,7 @@ mod parser_test {
     }
 
     #[test]
-    fn test_empty_s_expression() {
+    fn test_empty_expression_literal() {
         let input = "()";
         let lexer = Lexer::from(input);
         let parser = Parser::from(lexer);
@@ -170,7 +170,7 @@ mod parser_test {
 
         assert_eq!(1, program.nodes.len(), "Expected 1 node in program for input: {input}");
 
-        let Expression::SExpression(value) = &program.nodes[0].expression else {
+        let Expression::ExpressionLiteral(value) = &program.nodes[0].expression else {
             panic!("Expected SExpression expression got={:?}", program.nodes[0].expression);
         };
         assert!(value.is_empty())
@@ -197,7 +197,7 @@ mod parser_test {
             ("[1 2 3]", Expression::Integer(1), Expression::Integer(2), Expression::Integer(3)),
             ("[1 7.4 3]", Expression::Integer(1), Expression::Float(7.4), Expression::Integer(3)),
             ("[1 7.4 true]", Expression::Integer(1), Expression::Float(7.4), Expression::Boolean(true)),
-            ("[() 4 true]", Expression::SExpression([].into()), Expression::Integer(4), Expression::Boolean(true)),
+            ("[() 4 true]", Expression::ExpressionLiteral([].into()), Expression::Integer(4), Expression::Boolean(true)),
             ("[\"text\" 4 true]", Expression::String("text".into()), Expression::Integer(4), Expression::Boolean(true)),
             ("[\"text\" \" \" \"string\"]", Expression::String("text".into()), Expression::String(" ".into()), Expression::String("string".into())),
         ];
@@ -355,7 +355,7 @@ mod parser_test {
 
         let (ref condition, ref consequence) = branches[1];
 
-        let Expression::SExpression(ref condition) = condition.expression else {
+        let Expression::ExpressionLiteral(ref condition) = condition.expression else {
             panic!("Expected expression got {condition:?}");
         };
 

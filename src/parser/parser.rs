@@ -3,29 +3,35 @@ use std::mem;
 use crate::ast::ast::{Node, Program};
 use crate::ast::expression::Expression;
 use crate::lexer::lexer::Lexer;
+use crate::parser::error::ParseError;
 use crate::token::token::{Token, TokenType};
 
 #[derive(Debug)]
 pub struct Parser<'a> {
     lexer: Lexer<'a>,
     // TODO Replace with error type
-    errors: Vec<String>,
+    // errors: Vec<String>,
+    errors: Vec<ParseError>,
     current_token: Token,
     peek_token: Token,
 }
 
 impl Parser<'_> {
-    pub fn parse_program(mut self) -> Result<Program, Vec<String>> {
+    pub fn parse_program(mut self) -> Result<Program, Vec<ParseError>> {
         // let mut program = Program::new();
         let mut nodes = Vec::new();
         while !self.current_token_is(TokenType::EOF) {
             // println!("{:?}", self.current_token);
-            if let Some(node) = self.parse_expression() {
-                // program.statements.push(statement);
-                // println!("{:?}", node);
-                nodes.push(node);
-            } else { self.errors.push("Failed to parse expression.".to_string()) }
+            // if let Ok(node) = self.parse_expression() {
+            //     // program.statements.push(statement);
+            //     // println!("{:?}", node);
+            //     nodes.push(node);
+            // } else { self.errors.push("Failed to parse expression.".to_string()) }
             // self.next_token();
+            match self.parse_expression() {
+                Ok(node) => nodes.push(node),
+                Err(error) => self.errors.push(error)
+            }
         }
         if !self.errors.is_empty() {
             return Err(self.errors);
@@ -60,34 +66,37 @@ impl Parser<'_> {
         }
     }
 
-    fn peek_error(&mut self, expected: TokenType) {
-        self.errors
-            .push(format!("On row: {}, col: {}. Expected next token to be {:?}, got {:?} instead.",
-                          self.peek_token.row, self.peek_token.col, expected, self.peek_token))
-    }
+    // fn peek_error(&mut self, expected: TokenType) {
+    //     self.errors
+    //         .push(format!("On row: {}, col: {}. Expected next token to be {:?}, got {:?} instead.",
+    //                       self.peek_token.row, self.peek_token.col, expected, self.peek_token))
+    // }
 
     // fn expect_peek(&mut self, token_type: TokenType) -> bool {
-    fn expect_peek(&mut self, token_type: TokenType) -> Option<Token> {
+    fn expect_peek(&mut self, token_type: TokenType) -> Result<Token, ParseError> {
         if self.peek_token_is(token_type) {
-            Some(self.next_token())
+            self.next_token().into()
         } else {
-            self.peek_error(token_type);
+            // self.peek_error(token_type);
             // prevent infinite loops on error
             self.next_token();
-            None
+            ParseError{
+                col: self.peek_token.col, row: self.peek_token.row,
+                message: format!("Expected next token to be {:?} but got {:?}", token_type, self.peek_token.token_type)
+            }.into()
         }
     }
 
-    fn parse_expression(&mut self) -> Option<Node> {
+    fn parse_expression(&mut self) -> Result<Node, ParseError> {
         // if self.current_token_is(TokenType::LParen) && self.peek_token_is(TokenType::LParen) {
         if self.current_token_is(TokenType::LParen) && self.peek_token_is_literal() {
-            return self.parse_s_expression();
+            return self.parse_expression_literal();
         }
 
         if self.current_token_is(TokenType::LParen) && self.peek_token_is(TokenType::RParen) {
             let current = self.next_token();
             self.next_token();
-            return Node { expression: Expression::SExpression(Box::default()), token: current }.into();
+            return Node { expression: Expression::ExpressionLiteral(Box::default()), token: current }.into();
         }
 
         let mut in_parenthesis = false;
@@ -100,14 +109,17 @@ impl Parser<'_> {
 
         match (in_parenthesis, self.current_token_is(TokenType::RParen)) {
             // Fixme return error
-            (true, false) => return None,
+            (true, false) => return ParseError{
+                col: self.current_token.col, row: self.current_token.row,
+                message: "Expected closing parenthesis".to_string(),
+            }.into(),
             (true, true) => { self.next_token(); }
             (false, _) => {}
         };
-        Some(result)
+        result.into()
     }
 
-    fn prefix_parse(&mut self) -> Option<Node> {
+    fn prefix_parse(&mut self) -> Result<Node, ParseError> {
         match self.current_token.token_type {
             TokenType::Set => self.parse_set(),
             TokenType::If => self.parse_if(),
@@ -131,29 +143,31 @@ impl Parser<'_> {
             | TokenType::Equals => self.parse_prefix_operator(),
             TokenType::True | TokenType::False => self.parse_boolean().into(),
             _ => {
-                self.next_token();
-                None
+                let current = self.next_token();
+                ParseError {
+                    col: current.col, row: current.row,
+                    message: format!("Could not parse prefix {}", current.literal)
+                }.into()
             }
         }
     }
 
-    fn parse_s_expression(&mut self) -> Option<Node> {
+    fn parse_expression_literal(&mut self) -> Result<Node, ParseError> {
         let token = self.next_token();
         let mut expressions = Vec::new();
 
         while !self.current_token_is(TokenType::RParen) {
             expressions.push(self.parse_expression()?);
-            // println!("{:?}", expressions);
         }
         self.next_token();
 
-        Some(Node {
-            expression: Expression::SExpression(Box::from(expressions)),
+        Node {
+            expression: Expression::ExpressionLiteral(Box::from(expressions)),
             token,
-        })
+        }.into()
     }
 
-    fn parse_set(&mut self) -> Option<Node> {
+    fn parse_set(&mut self) -> Result<Node, ParseError> {
         let current = self.expect_peek(TokenType::LParen)?;
 
         let mut list = Vec::new();
@@ -163,24 +177,22 @@ impl Parser<'_> {
 
             let identifier = self.parse_identifier();
 
-            // println!("{:?}", self.current_token);
-            // FIXME, maybe an error should be returned here.
             let value = self.parse_expression()?;
 
             list.push((identifier, value));
-            // FIXME, should probably also be an error
+            // FIXME, should probably be an error
             // self.expect_peek(TokenType::RParen)?;
             self.next_token();
         }
 
-        Some(Node {
+        Node {
             expression: Expression::Set(list.into()),
             token: current,
-        })
+        }.into()
     }
 
 
-    fn parse_if(&mut self) -> Option<Node> {
+    fn parse_if(&mut self) -> Result<Node, ParseError> {
         let current = self.next_token();
 
         let condition = self.parse_expression()?;
@@ -197,7 +209,7 @@ impl Parser<'_> {
         }.into()
     }
 
-    fn parse_when(&mut self) -> Option<Node> {
+    fn parse_when(&mut self) -> Result<Node, ParseError> {
         let current = self.next_token();
 
         let mut branches = Vec::new();
@@ -205,8 +217,10 @@ impl Parser<'_> {
         while !self.current_token_is(TokenType::RParen) {
             let condition = self.parse_expression()?;
             if self.current_token_is(TokenType::RParen) {
-                println!("Expected consequence for condition");
-                return None;
+                return ParseError{
+                    col: self.current_token.col, row: self.current_token.row,
+                    message: "Expected consequence for condition in when-expression".to_string()
+                }.into();
             }
             let consequence = self.parse_expression()?;
             branches.push((condition.into(), consequence.into()))
@@ -218,7 +232,7 @@ impl Parser<'_> {
         }.into()
     }
 
-    fn parse_while(&mut self) -> Option<Node> {
+    fn parse_while(&mut self) -> Result<Node, ParseError> {
         let current = self.next_token();
         let condition = self.parse_expression()?;
 
@@ -233,17 +247,18 @@ impl Parser<'_> {
         }.into()
     }
 
-    fn parse_function(&mut self) -> Option<Node> {
+    fn parse_function(&mut self) -> Result<Node, ParseError> {
         let current = self.expect_peek(TokenType::Pipe)?;
         self.next_token();
 
         let mut parameters = Vec::new();
 
-        // while !self.peek_token_is(TokenType::Pipe) {
         while !self.current_token_is(TokenType::Pipe) {
             if !self.current_token_is(TokenType::Ident) {
-                // FIXME return error
-                return None;
+                return ParseError {
+                    col: self.current_token.col, row: self.current_token.row,
+                    message: "Expected function parameters names.".to_string()
+                }.into();
             }
             let param = self.parse_identifier();
             parameters.push(param)
@@ -259,7 +274,7 @@ impl Parser<'_> {
         }.into()
     }
 
-    fn parse_scoped_section(&mut self) -> Option<Node> {
+    fn parse_scoped_section(&mut self) -> Result<Node, ParseError> {
         let current = self.next_token();
 
         let section = self.parse_expression()?;
@@ -279,42 +294,40 @@ impl Parser<'_> {
     }
 
 
-    fn parse_integer_literal(&mut self) -> Option<Node> {
-        // let current = self.current_token.clone();
+    fn parse_integer_literal(&mut self) -> Result<Node, ParseError> {
         let current = self.next_token();
 
-        // let value = if let Ok(value) = current.literal.parse::<i64>() {
         let value = if let Ok(value) = current.literal.parse::<i32>() {
             value
         } else {
-            // FIXME, return an error
-            self.errors
-                .push(format!("could not parse {} as integer", current.literal));
-            return None;
+            return ParseError {
+                col: current.col, row: current.row,
+                message: format!("Could not parse {} as integer", current.literal)
+            }.into();
         };
 
-        Some(Node {
+        Node {
             expression: Expression::Integer(value),
             token: current,
-        })
+        }.into()
     }
 
-    fn parse_float_literal(&mut self) -> Option<Node> {
+    fn parse_float_literal(&mut self) -> Result<Node, ParseError> {
         let current = self.next_token();
 
         let value = if let Ok(value) = current.literal.parse::<f64>() {
             value
         } else {
-            // FIXME, return an error
-            self.errors
-                .push(format!("could not parse {} as integer", current.literal));
-            return None;
+            return ParseError {
+                col: current.col, row: current.row,
+                message: format!("Could not parse {} as float", current.literal)
+            }.into();
         };
 
-        Some(Node {
+        Node {
             expression: Expression::Float(value),
             token: current,
-        })
+        }.into()
     }
 
     fn parse_string_literal(&mut self) -> Node {
@@ -325,13 +338,12 @@ impl Parser<'_> {
         }
     }
 
-    fn parse_array_literal(&mut self) -> Option<Node> {
+    fn parse_array_literal(&mut self) -> Result<Node, ParseError> {
         let token = self.next_token();
         let mut expressions = Vec::new();
 
         while !self.current_token_is(TokenType::RBracket) {
             expressions.push(self.parse_expression()?);
-            // println!("{:?}", expressions);
         }
         self.next_token();
         Node {
@@ -348,7 +360,7 @@ impl Parser<'_> {
         }
     }
 
-    fn parse_index_operator(&mut self) -> Option<Node> {
+    fn parse_index_operator(&mut self) -> Result<Node, ParseError> {
         let current = self.next_token();
         let index = self.parse_expression()?;
         let operand = self.parse_expression()?;
@@ -359,7 +371,7 @@ impl Parser<'_> {
         }.into()
     }
 
-    fn parse_prefix_operator(&mut self) -> Option<Node> {
+    fn parse_prefix_operator(&mut self) -> Result<Node, ParseError> {
         let current = self.next_token();
 
         let mut operands = Vec::new();
@@ -386,5 +398,28 @@ impl<'a> From<Lexer<'a>> for Parser<'a> {
             current_token,
             peek_token,
         }
+    }
+}
+
+impl From<Token> for Result<Token, ParseError> {
+    fn from(value: Token) -> Self {
+        Ok(value)
+    }
+}
+
+impl From<ParseError> for Result<Token, ParseError> {
+    fn from(value: ParseError) -> Self {
+        Err(value)
+    }
+}
+impl From<Node> for Result<Node, ParseError> {
+    fn from(value: Node) -> Self {
+        Ok(value)
+    }
+}
+
+impl From<ParseError> for Result<Node, ParseError> {
+    fn from(value: ParseError) -> Self {
+        Err(value)
     }
 }

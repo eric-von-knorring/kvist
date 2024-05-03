@@ -4,7 +4,7 @@ use crate::ast::ast::Node;
 
 #[derive(Debug, PartialEq)]
 pub enum Expression {
-    SExpression(Box<[Node]>),
+    ExpressionLiteral(Box<[Node]>),
     // Set(Box<Node>, Box<Node>),
     Set(Rc<[(Node, Node)]>),
     Identifier(Rc<str>),

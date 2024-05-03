@@ -32,7 +32,9 @@ pub fn start() {
         let evaluation = match parser.parse_program() {
             Ok(result) => result.eval(&mut env),
             Err(errors) => {
-                print_errors(errors);
+                eprintln!("Failed to parse input:");
+                errors.iter()
+                    .for_each(|error| eprintln!("\tERROR: {error}"));
                 continue;
             }
         };
@@ -41,10 +43,4 @@ pub fn start() {
             Err(error) => eprintln!("Execution error:\n\tERROR: {error}")
         };
     }
-}
-
-fn print_errors(errors: Vec<String>) {
-    eprintln!("Failed to parse input:");
-    errors.iter()
-        .for_each(|error| eprintln!("\tERROR: {error}"))
 }
