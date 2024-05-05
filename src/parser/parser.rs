@@ -89,6 +89,12 @@ impl Parser<'_> {
 
     fn parse_expression(&mut self) -> Result<Node, ParseError> {
         // if self.current_token_is(TokenType::LParen) && self.peek_token_is(TokenType::LParen) {
+        if self.current_token_is(TokenType::EOF) {
+            return ParseError{
+                col: self.current_token.col, row: self.current_token.row,
+                message: "Unexpected end of file".to_string()
+            }.into();
+        }
         if self.current_token_is(TokenType::LParen) && self.peek_token_is_literal() {
             return self.parse_expression_literal();
         }
@@ -108,7 +114,6 @@ impl Parser<'_> {
         let result = self.prefix_parse()?;
 
         match (in_parenthesis, self.current_token_is(TokenType::RParen)) {
-            // Fixme return error
             (true, false) => return ParseError{
                 col: self.current_token.col, row: self.current_token.row,
                 message: "Expected closing parenthesis".to_string(),
@@ -146,7 +151,7 @@ impl Parser<'_> {
                 let current = self.next_token();
                 ParseError {
                     col: current.col, row: current.row,
-                    message: format!("Could not parse prefix {}", current.literal)
+                    message: format!("Could not parse prefix token type '{:?}' with literal '{}'", current.token_type, current.literal)
                 }.into()
             }
         }
