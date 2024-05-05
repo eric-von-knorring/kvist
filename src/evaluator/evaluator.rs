@@ -310,8 +310,10 @@ fn divide_operator(operands: &[Node], environment: &mut Environment) -> Result<O
     }
     if let Some(single) = operands.single() {
         return match single.eval(environment)? {
+            Object::Integer(0)   => Object::Undefined.into(),
+            Object::Float(value) if value == 0. => Object::Undefined.into(),
             Object::Integer(value) => Object::Float(1. / f64::from(value)).into(),
-            Object::Float(value) => Object::Float(value).into(),
+            Object::Float(value) => Object::Float(1. / value).into(),
             object @ _ => single.to_error(format!("Type mismatch (/ {object})")).into()
         };
     }
@@ -319,9 +321,9 @@ fn divide_operator(operands: &[Node], environment: &mut Environment) -> Result<O
     let mut result = operands[0].eval(environment)?;
     for operand in operands[1..].iter() {
         result = match (result, operand.eval(environment)?) {
-            // (Object::Integer(left), Object::Integer(right)) => Object::Integer(left / right),
+            (_, Object::Integer(0)) => Object::Undefined.into(),
+            (_, Object::Float(value)) if value == 0. => Object::Undefined.into(),
             (Object::Integer(left), Object::Integer(right)) => no_truncating_division(left, right),
-
             (Object::Float(left), Object::Integer(right)) => Object::Float(left / f64::from(right)),
             (Object::Integer(left), Object::Float(right)) => Object::Float(f64::from(left) / right),
             (Object::Float(left), Object::Float(right)) => Object::Float(left / right),
