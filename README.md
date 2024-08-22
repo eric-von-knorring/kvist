@@ -96,7 +96,7 @@ Kvist is a simple scripting language that is dynamically typed.
     (args) # Gets the program arguments as an array
     (println "Hello" "World") # Prints each evaluated argument to stdout and returns the value of the last evaluation 
     (readln) # Returns a line from stdin as a string
-    (len) # Gives the length of an array
+    (len ["one" "two" "three"]) # Gives the length of an array
     (first ["one" "two" "three"]) # Gets the first element of an array
     (last ["one" "two" "three"]) # Gets the last element of an array
     (rest ["one" "two" "three"]) # Returns creates an array 
