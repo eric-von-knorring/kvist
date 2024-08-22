@@ -4,6 +4,7 @@ use crate::object::object::Object;
 #[cfg(test)]
 mod test {
     use std::rc::Rc;
+    use crate::evaluator::error::EvaluationError;
     use crate::evaluator::evaluator::Eval;
     use crate::lexer::lexer::Lexer;
     use crate::object::environment::Environment;
@@ -248,7 +249,7 @@ mod test {
         }
     }
 
-    fn apply_eval(input: &str) -> Result<Object, String> {
+    fn apply_eval(input: &str) -> Result<Object, EvaluationError> {
         // let program = Parser::new(Lexer::new(input)).parse_program();
         let lexer = Lexer::from(input);
         let parser = Parser::from(lexer);

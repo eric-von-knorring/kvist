@@ -2,6 +2,7 @@ use std::fmt::{Display, Formatter};
 use crate::evaluator::error::EvaluationError::{Contextual, Simple};
 
 
+#[derive(Debug)]
 pub enum EvaluationError {
     Simple(String),
     Contextual(ContextualEvaluationError),

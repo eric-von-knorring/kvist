@@ -357,6 +357,9 @@ fn lesser_then_operator(operands: &[Node], environment: &mut Environment) -> Res
             (Object::Float(left), Object::Float(right)) => left < right,
             (left @ _, right @ _) => return Err(format!("Type mismatch (< {left} {right})").into()),
         };
+        if !result {
+            return Object::Boolean(false).into();
+        }
         left = right;
     }
     return Object::Boolean(result).into();
@@ -377,6 +380,9 @@ fn greater_then_operator(operands: &[Node], environment: &mut Environment) -> Re
             (Object::Float(left), Object::Float(right)) => left > right,
             (left @ _, right @ _) => return Err(format!("Type mismatch (> {left} {right})").into()),
         };
+        if !result {
+            return Object::Boolean(false).into();
+        }
         left = right;
     }
     return Object::Boolean(result).into();
@@ -399,6 +405,9 @@ fn equals_operator(operands: &[Node], environment: &mut Environment) -> Result<O
             (Object::String(left), Object::String(right)) => left == right,
             (left @ _, right @ _) => return Err(format!("Type mismatch (= {left} {right})").into()),
         };
+        if !result {
+            return Object::Boolean(false).into();
+        }
         left = right;
     }
     return Object::Boolean(result).into();
