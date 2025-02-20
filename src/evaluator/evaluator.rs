@@ -83,9 +83,9 @@ fn eval_expression_literal(nodes: &[Node], environment: &mut Environment) -> Res
         return Object::Unit.into();
     };
 
-    return match node.eval(environment) {
+    match node.eval(environment) {
         Ok(Object::Function(params, body, env)) => {
-            eval_function_call(node, params, nodes, body, &mut Environment::from(env))
+            eval_function_call(node, params, nodes, body, &mut Environment::from(env), environment)
         }
         Ok(Object::Builtin(builtin)) => {
             eval_builtin(builtin, &nodes[1..], environment)
@@ -100,21 +100,22 @@ fn eval_expression_literal(nodes: &[Node], environment: &mut Environment) -> Res
             } else { result }
         }
         err @ Err(_) => err,
-    };
+    }
 }
 
-fn eval_function_call(node: &Node, params: Rc<[Node]>, nodes: &[Node], body: Rc<Node>, environment: &mut Environment) -> Result<Object, EvaluationError> {
+fn eval_function_call(node: &Node, params: Rc<[Node]>, nodes: &[Node], body: Rc<Node>, function_environment: &mut Environment, environment: &mut Environment) -> Result<Object, EvaluationError> {
     for (index, param) in params.iter().enumerate() {
         let Expression::Identifier(ref name) = param.expression else {
             return Err(node.to_error(format!("Illegal function primate {param:?}")));
         };
+
         let value = nodes.get(index + 1)
             .ok_or(node.to_error(format!("Missing parameter value for {name}")))?
             .eval(environment)?;
-        environment.set(name.clone(), value)
+        function_environment.set(name.clone(), value)
     }
 
-    body.eval(environment)
+    body.eval(function_environment)
 }
 
 fn eval_builtin(builtin: fn(Box<[Object]>) -> Result<Object, String>, args: &[Node], environment: &mut Environment) -> Result<Object, EvaluationError> {

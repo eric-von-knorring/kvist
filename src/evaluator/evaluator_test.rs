@@ -249,6 +249,19 @@ mod test {
         }
     }
 
+    #[test]
+    fn test_recursion() {
+        let tests = [
+            ("(set (fact (fn |num| ( (when (= num 1) 1 () (* num (fact (- num 1)))))))) (fact 3)",
+                Object::Integer(6))
+        ];
+
+        for (input, expected) in tests {
+            let evaluated = apply_eval(input).unwrap();
+            assert_eq!(expected, evaluated, "Failed to evaluate: {input}");
+        }
+    }
+
     fn apply_eval(input: &str) -> Result<Object, EvaluationError> {
         // let program = Parser::new(Lexer::new(input)).parse_program();
         let lexer = Lexer::from(input);
