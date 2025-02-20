@@ -8,6 +8,14 @@ Kvist is a simple scripting language that is dynamically typed.
 (println "Hello, World!")
 ```
 
+## Install
+
+Make sure to have rust `1.84.0` or later installed then run:
+
+```bash
+cargo install --path .
+```
+
 ## Mini tour
 
 ```clojure
