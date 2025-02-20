@@ -101,6 +101,7 @@ Kvist is a simple scripting language that is dynamically typed.
     (last ["one" "two" "three"]) # Gets the last element of an array
     (rest ["one" "two" "three"]) # Returns creates an array 
     (push ["one" "two" "three"] "four") # Returns a new array with the second paramter added to the end
+    (parse_int "123") # Parses string an returns an integer
 
 ```
 

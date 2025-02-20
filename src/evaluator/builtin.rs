@@ -13,7 +13,7 @@ pub fn builtins(name: &str) -> Option<Object> {
         "last" => Some(Object::Builtin(last)),
         "rest" => Some(Object::Builtin(rest)),
         "push" => Some(Object::Builtin(push)),
-        // "int" => Some(Object::Builtin(int)),
+        "parse_int" => Some(Object::Builtin(parse_int)),
         &_ => None,
     }
 }
@@ -113,9 +113,24 @@ fn push(args: Box<[Object]>) -> Result<Object, String> {
         Object::Array(array) => {
             let mut new = array.to_vec();
             new.push(args[1].clone());
-
-            return Ok(Object::Array(Rc::from(new)));
+            Ok(Object::Array(Rc::from(new)))
         },
         _ => Err(format!("argument to `push` must be Array, got {}", &args[0])),
+    }
+}
+
+fn parse_int(args: Box<[Object]>) -> Result<Object, String> {
+    if args.len() != 1 {
+        return Err(format!("wrong number of arguments. got={}, want=1", args.len()));
+    }
+
+    match &args[0] {
+        Object::String(string) => {
+            let Ok(int) = string.parse::<i32>() else {
+                return Err(format!("Number format error. Cannot convert \"{string}\" to int."));
+            };
+            Ok(Object::Integer(int))
+        },
+        object @ _ => Err(format!("Cannot convert {} to int", object))
     }
 }
