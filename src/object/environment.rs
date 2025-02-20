@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
-use crate::object::object::Object;
+use crate::object::object::{Object, Viewable};
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct Environment {
@@ -30,6 +30,18 @@ impl Environment {
 
     pub fn set(&mut self, name: Rc<str>, object: Object) {
         self.store.borrow_mut().insert(name, object);
+    }
+
+    pub fn view(&self) -> String {
+        let mut string = String::new();
+        for (name, value) in self.store.borrow().iter() {
+            string += format!("({} -> {})", name, value.view()).as_str();
+        }
+        if let Some(outer) = &self.outer {
+            string += "\n\t";
+            string += outer.view().as_str();
+        }
+        string
     }
 }
 
