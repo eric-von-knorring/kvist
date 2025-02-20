@@ -1,0 +1,20 @@
+#!/usr/bin/env kvist
+
+
+(set 
+    (fib (fn |n| (when (< n 3) 1 
+                       () (+ (fib (- n 1)) (fib (- n 2)))))))
+
+
+(println (+ "Fib: " (fib 1)))
+(println (+ "Fib: " (fib 2)))
+(println (+ "Fib: " (fib 3)))
+(println (+ "Fib: " (fib 4)))
+(println (+ "Fib: " (fib 5)))
+(println (+ "Fib: " (fib 6)))
+(println (+ "Fib: " (fib 7)))
+(println (+ "Fib: " (fib 8)))
+(println (+ "Fib: " (fib 9)))
+(println (+ "Fib: " (fib 10)))
+
+

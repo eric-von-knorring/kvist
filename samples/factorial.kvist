@@ -1,0 +1,16 @@
+#!/usr/bin/env kvist
+
+# Takes argument on what to run:
+#   ./fact.kvist <number>
+
+(set 
+    (number (parse_int (@ 1 (args))))
+    (fact (fn |num| (
+        (- num 1)
+        (when (= num 1) 1
+                () (* num (fact (- num 1)) 
+    )))))
+)
+
+(println (fact number))
+
