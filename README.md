@@ -110,7 +110,7 @@ cargo install --path .
     (rest ["one" "two" "three"]) # Returns creates an array 
     (push ["one" "two" "three"] "four") # Returns a new array with the second paramter added to the end
     (parse_int "123") # Parses string an returns an integer
-
+    (os_execute "ls" "-l" "-a") # Runis a system command and passes through stdin, stdout and stderr 
 ```
 
 ## TODO

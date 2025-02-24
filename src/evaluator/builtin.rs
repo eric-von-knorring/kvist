@@ -1,7 +1,8 @@
-use std::{env, io};
-use std::io::{BufRead, BufReader};
-use std::rc::Rc;
 use crate::object::object::{Object, Viewable};
+use std::io::{BufRead, BufReader};
+use std::process::{Command, Stdio};
+use std::rc::Rc;
+use std::{env, io};
 
 pub fn builtins(name: &str) -> Option<Object> {
     match name {
@@ -14,6 +15,7 @@ pub fn builtins(name: &str) -> Option<Object> {
         "rest" => Some(Object::Builtin(rest)),
         "push" => Some(Object::Builtin(push)),
         "parse_int" => Some(Object::Builtin(parse_int)),
+        "os_execute" => Some(Object::Builtin(os_execute)),
         &_ => None,
     }
 }
@@ -133,4 +135,40 @@ fn parse_int(args: Box<[Object]>) -> Result<Object, String> {
         },
         object @ _ => Err(format!("Cannot convert {} to int", object))
     }
+}
+
+fn os_execute(args: Box<[Object]>) -> Result<Object, String> {
+    if args.is_empty() {
+        return Err("no command to execute".to_string());
+    }
+
+    fn valid_command(arg: &Object) -> Result<String, String> {
+        match arg {
+            object @ Object::String(_) => Ok(object.view()),
+            object @ Object::Boolean(_) => Ok(object.view()),
+            object @ Object::Float(_) => Ok(object.view()),
+            object @ Object::Integer(_) => Ok(object.view()),
+            _ => Err(format!("Invalid command '{}' not allowed.", arg.view())),
+        }
+    }
+
+    let command = valid_command(&args[0])?;
+
+    let mut command_arguemets = Vec::new();
+    for arg in &args[1..] {
+        command_arguemets.push(valid_command(arg)?);
+    }
+
+    let result = match Command::new(command)
+        .args(command_arguemets)
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .stdin(Stdio::inherit())
+        .output() {
+        Ok(output) => output.status.code()
+            .map_or(Object::Unit, |code| Object::Integer(code)),
+        Err(e) => return Err(format!("Command failed to execute '{}'", e)),
+    };
+
+    Ok(result)
 }
