@@ -16,6 +16,7 @@ pub fn builtins(name: &str) -> Option<Object> {
         "push" => Some(Object::Builtin(push)),
         "parse_int" => Some(Object::Builtin(parse_int)),
         "os_execute" => Some(Object::Builtin(os_execute)),
+        "exit" => Some(Object::Builtin(exit)),
         &_ => None,
     }
 }
@@ -171,4 +172,17 @@ fn os_execute(args: Box<[Object]>) -> Result<Object, String> {
     };
 
     Ok(result)
+}
+
+fn exit(args: Box<[Object]>) -> Result<Object, String> {
+    if args.len() != 1 {
+        return Err(format!("wrong number of arguments. got={}, want=1", args.len()));
+    }
+
+    match &args[0] {
+        Object::Integer(integer) => {
+            std::process::exit(*integer);
+        },
+        object @ _ => Err(format!("Cannot use {} as exit code", object))
+    }
 }
