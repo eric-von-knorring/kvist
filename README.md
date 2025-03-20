@@ -99,6 +99,11 @@ cargo install --path .
 (hello)
 (add 1 2)
 
+# Last paramter of a function can used to store a variable amount of paramters in an array
+(set (vararg (fn |a b ...c| (+ a b (len c)))))
+(vararg 1 2 3 4)
+(vararg 1 2)
+
 # Builtins
 
     (args) # Gets the program arguments as an array

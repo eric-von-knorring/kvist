@@ -24,6 +24,8 @@ pub enum TokenType {
     // Operators
     Comma,
     DoubleColon,
+    DoubleDot,
+    Ellipsis,
     At,
     Plus,
     Minus,

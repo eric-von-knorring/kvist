@@ -262,6 +262,21 @@ mod test {
         }
     }
 
+    #[test]
+    fn test_vararg_function() {
+        let tests = [
+            ("(set (myfunction (fn |a b ...c| (+ a b (len c))))) (myfunction 1 2 3 4)",
+             Object::Integer(5)),
+            ("(set (myfunction (fn |a b ...c| (+ a b (len c))))) (myfunction 1 2)",
+                 Object::Integer(3))
+        ];
+
+        for (input, expected) in tests {
+            let evaluated = apply_eval(input).unwrap();
+            assert_eq!(expected, evaluated, "Failed to evaluate: {input}");
+        }
+    }
+
     fn apply_eval(input: &str) -> Result<Object, EvaluationError> {
         // let program = Parser::new(Lexer::new(input)).parse_program();
         let lexer = Lexer::from(input);

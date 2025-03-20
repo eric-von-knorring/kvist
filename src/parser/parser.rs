@@ -257,16 +257,33 @@ impl Parser<'_> {
         self.next_token();
 
         let mut parameters = Vec::new();
+        let mut vararg = None;
 
         while !self.current_token_is(TokenType::Pipe) {
-            if !self.current_token_is(TokenType::Ident) {
-                return ParseError {
-                    col: self.current_token.col, row: self.current_token.row,
-                    message: "Expected function parameters names.".to_string()
-                }.into();
-            }
-            let param = self.parse_identifier();
-            parameters.push(param)
+            match (&self.current_token.token_type, &self.peek_token.token_type) {
+                (TokenType::Ellipsis, TokenType::Ident) => {
+                    self.next_token();
+                    let identifier = self.parse_identifier();
+                    if !self.current_token_is(TokenType::Pipe) {
+                        return ParseError {
+                            col: self.current_token.col, row: self.current_token.row,
+                            message: "Expected vararg identifier to be last in parameter list.".to_string()
+                        }.into();
+                    }
+                    vararg = Some(identifier);
+                    break;
+                }
+                (TokenType::Ident, _) => {
+                    let param = self.parse_identifier();
+                    parameters.push(param)
+                }
+                _ => {
+                    return ParseError {
+                        col: self.current_token.col, row: self.current_token.row,
+                        message: "Expected function parameters names.".to_string()
+                    }.into();
+                }
+            };
         }
 
         self.next_token();
@@ -274,7 +291,7 @@ impl Parser<'_> {
         let body = self.parse_expression()?;
 
         Node {
-            expression: Expression::Function(parameters.into(), body.into()),
+            expression: Expression::Function(parameters.into(), vararg.into(), body.into()),
             token: current,
         }.into()
     }

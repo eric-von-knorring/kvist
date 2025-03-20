@@ -44,6 +44,7 @@ impl Lexer<'_> {
         let token = match self.current {
             // '(' => Token { token_type: TokenType::LParen, row: self.row, col: self.col, literal: self.current.into()},
             ':' => self.colon_token(),
+            '.' => self.dot_token(),
             ',' => self.create_token(TokenType::Comma, self.current.literal()),
             '§' => self.create_token(TokenType::Section, self.current.literal()),
             '!' => self.create_token(TokenType::Bang, self.current.literal()),
@@ -180,6 +181,25 @@ impl Lexer<'_> {
             literal.push(self.current);
             // return self.create_token(TokenType::DoubleColon, Rc::from(literal));
             return Token {token_type: TokenType::DoubleColon, col, row, literal: Rc::from(literal)};
+        }
+        return self.create_token(TokenType::Illegal, self.current.literal());
+    }
+
+    fn dot_token(&mut self) -> Token {
+        if let Some((_, '.')) = self.peek {
+            let col = self.col;
+            let row = self.row;
+            let mut literal = String::new();
+            literal.push(self.current);
+            self.read_char();
+            literal.push(self.current);
+            // return self.create_token(TokenType::DoubleColon, Rc::from(literal));
+            if let Some((_, '.')) = self.peek {
+                self.read_char();
+                literal.push(self.current);
+                return Token {token_type: TokenType::Ellipsis, col, row, literal: Rc::from(literal)};
+            }
+            return Token {token_type: TokenType::DoubleDot, col, row, literal: Rc::from(literal)};
         }
         return self.create_token(TokenType::Illegal, self.current.literal());
     }

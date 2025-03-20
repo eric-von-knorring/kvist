@@ -18,7 +18,7 @@ pub enum Expression {
     If(Box<Node>, Box<Node>, Option<Box<Node>>),
     When(Box<[(Box<Node>, Box<Node>)]>),
     While(Box<Node>, Option<Box<Node>>),
-    Function(Rc<[Node]>, Rc<Node>),
+    Function(Rc<[Node]>, Rc<Option<Node>>, Rc<Node>),
     Section(Box<Node>),
 }
 

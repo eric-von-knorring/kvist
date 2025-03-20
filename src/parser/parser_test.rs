@@ -455,7 +455,7 @@ mod parser_test {
         let program = parser.parse_program().unwrap();
 
         assert_eq!(1, program.nodes.len(), "Expected 1 node in program for input: {input}");
-        let Expression::Function(parameter, body) = &program.nodes[0].expression else {
+        let Expression::Function(parameter, vararg, body) = &program.nodes[0].expression else {
             panic!("Expected function-expression with alternative got={:?}", program.nodes[0].expression);
         };
 
@@ -473,6 +473,56 @@ mod parser_test {
         };
         assert_eq!("c", param.as_ref());
 
+        assert!(vararg.is_none());
+
+        let Expression::Prefix(operator, operands) = &body.expression else {
+            panic!("Expected prefix-expression got={:?}", body);
+        };
+
+        assert_eq!("+", operator.as_ref());
+        assert_eq!(3, operands.len());
+        let Expression::Identifier(ref param) = operands[0].expression else {
+            panic!("Expected identifier got={:?}", operands[0]);
+        };
+        assert_eq!("a", param.as_ref());
+        let Expression::Identifier(ref param) = operands[1].expression else {
+            panic!("Expected identifier got={:?}", operands[1]);
+        };
+        assert_eq!("b", param.as_ref());
+        let Expression::Identifier(ref param) = operands[2].expression else {
+            panic!("Expected identifier got={:?}", operands[2]);
+        };
+        assert_eq!("c", param.as_ref());
+    }
+
+    #[test]
+    fn test_vararg_function() {
+        let input = "(fn |a b ...c| (+ a b c))";
+
+        let lexer = Lexer::from(input);
+        let parser = Parser::from(lexer);
+        let program = parser.parse_program().unwrap();
+
+        assert_eq!(1, program.nodes.len(), "Expected 1 node in program for input: {input}");
+        let Expression::Function(parameter, vararg, body) = &program.nodes[0].expression else {
+            panic!("Expected function-expression with alternative got={:?}", program.nodes[0].expression);
+        };
+
+        assert_eq!(2, parameter.len());
+        let Expression::Identifier(ref param) = parameter[0].expression else {
+            panic!("Expected identifier got={:?}", parameter[0]);
+        };
+        assert_eq!("a", param.as_ref());
+        let Expression::Identifier(ref param) = parameter[1].expression else {
+            panic!("Expected identifier got={:?}", parameter[1]);
+        };
+        assert_eq!("b", param.as_ref());
+
+        let Expression::Identifier(ref identifier) = vararg.as_ref().as_ref().unwrap().expression else {
+            panic!("Expected identifier got={:?}", vararg);
+        };
+
+        assert_eq!("c", identifier.as_ref());
 
         let Expression::Prefix(operator, operands) = &body.expression else {
             panic!("Expected prefix-expression got={:?}", body);

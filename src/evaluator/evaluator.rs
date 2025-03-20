@@ -39,7 +39,7 @@ impl Eval for Node {
             Expression::When(branches) => eval_when_expression(branches, environment),
             Expression::While(condition, None) => eval_while_expression(condition, environment),
             Expression::While(condition, Some(loop_body)) => eval_while_body_expression(condition, loop_body, environment),
-            Expression::Function(params, body) => Object::Function(params.clone(), body.clone(), environment.clone().into()).into(),
+            Expression::Function(params, vararg, body) => Object::Function(params.clone(), vararg.clone(), body.clone(), environment.clone().into()).into(),
             Expression::Section(section) => eval_scope_section(section, environment),
         }.map_err(|err| match err {
             EvaluationError::Simple(message) => self.to_error(message),
@@ -84,8 +84,8 @@ fn eval_expression_literal(nodes: &[Node], environment: &mut Environment) -> Res
     };
 
     match node.eval(environment) {
-        Ok(Object::Function(params, body, env)) => {
-            eval_function_call(node, params, nodes, body, &mut Environment::from(env), environment)
+        Ok(Object::Function(params, vararg, body, env)) => {
+            eval_function_call(node, params, vararg, nodes, body, &mut Environment::from(env), environment)
         }
         Ok(Object::Builtin(builtin)) => {
             eval_builtin(builtin, &nodes[1..], environment)
@@ -103,16 +103,28 @@ fn eval_expression_literal(nodes: &[Node], environment: &mut Environment) -> Res
     }
 }
 
-fn eval_function_call(node: &Node, params: Rc<[Node]>, nodes: &[Node], body: Rc<Node>, function_environment: &mut Environment, environment: &mut Environment) -> Result<Object, EvaluationError> {
+fn eval_function_call(node: &Node, params: Rc<[Node]>, vararg: Rc<Option<Node>>, nodes: &[Node], body: Rc<Node>, function_environment: &mut Environment, environment: &mut Environment) -> Result<Object, EvaluationError> {
     for (index, param) in params.iter().enumerate() {
         let Expression::Identifier(ref name) = param.expression else {
-            return Err(node.to_error(format!("Illegal function primate {param:?}")));
+            return Err(node.to_error(format!("Illegal function parameter type {param:?}")));
         };
 
         let value = nodes.get(index + 1)
             .ok_or(node.to_error(format!("Missing parameter value for {name}")))?
             .eval(environment)?;
         function_environment.set(name.clone(), value)
+    }
+
+    if let Some(vararg_name) = vararg.as_ref() {
+        let Expression::Identifier(ref name) = vararg_name.expression else {
+            return Err(node.to_error(format!("Illegal function parameter type {vararg_name:?}")));
+        };
+        let mut args = Vec::new();
+
+        for node in nodes[params.len()+1..].iter() {
+            args.push(node.eval(environment)?);
+        }
+        function_environment.set(name.clone(), Object::Array(args.into()))
     }
 
     body.eval(function_environment)

@@ -53,6 +53,7 @@ mod test {
         (if (true) (+ 1 1)) \
         (while (false) (\"hello\"))\
         (when (false) (\"hello\") (true) (\"world\"))\
+        (.. ...)\
         ";
 
         let expected = [
@@ -163,6 +164,10 @@ mod test {
             (TokenType::String, "world"),
             (TokenType::RParen, ")"),
             (TokenType::RParen, ")"),
+            (TokenType::LParen, "("),
+            (TokenType::DoubleDot, ".."),
+            (TokenType::Ellipsis, "..."),
+            (TokenType::RParen, ")"),
             (TokenType::EOF, ""),
         ];
 
@@ -182,7 +187,7 @@ mod test {
 a b c
 :: d ::
 :: :: e
-";
+.. ...";
 
         let expected = [
             (1, 1),
@@ -197,6 +202,8 @@ a b c
             (1, 4),
             (4, 4),
             (7, 4),
+            (1, 5),
+            (4, 5),
         ];
 
         // let mut lexer = Lexer::new(input);
