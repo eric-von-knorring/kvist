@@ -20,6 +20,7 @@ pub enum Expression {
     While(Box<Node>, Option<Box<Node>>),
     Function(Rc<[Node]>, Rc<Option<Node>>, Rc<Node>),
     Section(Box<Node>),
+    Include(Box<Node>),
 }
 
 impl Expression {

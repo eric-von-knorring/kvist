@@ -250,6 +250,19 @@ mod test {
     }
 
     #[test]
+    fn test_include_expression() {
+        let tests = [
+            ("(include \"samples/seven.kvist\")", Object::Integer(7)),
+            ("(include \"samples/seven.kvist\")(+ \"Seven: \" seven)", Object::String("Seven: 7".into())),
+        ];
+
+        for (input, expected) in tests {
+            let evaluated = apply_eval(input).unwrap();
+            assert_eq!(expected, evaluated, "Failed to evaluate: {input}");
+        }
+    }
+
+    #[test]
     fn test_recursion() {
         let tests = [
             ("(set (fact (fn |num| ( (when (= num 1) 1 () (* num (fact (- num 1)))))))) (fact 3)",

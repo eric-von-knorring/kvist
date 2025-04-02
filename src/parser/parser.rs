@@ -130,6 +130,7 @@ impl Parser<'_> {
             TokenType::If => self.parse_if(),
             TokenType::When => self.parse_when(),
             TokenType::While => self.parse_while(),
+            TokenType::Include => self.parse_include(),
             TokenType::Function => self.parse_function(),
             TokenType::Section => self.parse_scoped_section(),
             TokenType::Int => self.parse_integer_literal(),
@@ -248,6 +249,16 @@ impl Parser<'_> {
 
         Node {
             expression: Expression::While(condition.into(), loop_expression),
+            token: current,
+        }.into()
+    }
+
+    fn parse_include(&mut self) -> Result<Node, ParseError> {
+        let current = self.next_token();
+        let target = self.parse_string_literal();
+
+        Node {
+            expression: Expression::Include(target.into()),
             token: current,
         }.into()
     }

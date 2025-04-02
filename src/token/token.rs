@@ -56,4 +56,5 @@ pub enum TokenType {
     If,
     When,
     While,
+    Include,
 }

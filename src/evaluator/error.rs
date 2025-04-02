@@ -1,5 +1,4 @@
 use std::fmt::{Display, Formatter};
-use crate::evaluator::error::EvaluationError::{Contextual, Simple};
 
 
 #[derive(Debug)]
@@ -17,20 +16,20 @@ pub struct ContextualEvaluationError {
 
 impl From<String> for EvaluationError {
     fn from(value: String) -> Self {
-        Simple(value)
+        EvaluationError::Simple(value)
     }
 }
 impl From<ContextualEvaluationError> for EvaluationError {
     fn from(value: ContextualEvaluationError) -> Self {
-        Contextual(value)
+        EvaluationError::Contextual(value)
     }
 }
 
 impl Display for EvaluationError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Simple(message) => write!(f, "{}", message),
-            Contextual(error) => write!(f, "Row {}, Col: {}: {}", error.row, error.col, error.message)
+            EvaluationError::Simple(message) => write!(f, "{}", message),
+            EvaluationError::Contextual(error) => write!(f, "Row {}, Col: {}: {}", error.row, error.col, error.message),
         }
     }
 }

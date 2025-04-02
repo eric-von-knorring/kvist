@@ -1,0 +1,3 @@
+#!/usr/bin/env kvist
+
+(set (seven 7))

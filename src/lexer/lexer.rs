@@ -112,6 +112,7 @@ impl Lexer<'_> {
             "if" => TokenType::If,
             "when" => TokenType::When,
             "while" => TokenType::While,
+            "include" => TokenType::Include,
             _ => TokenType::Ident,
         }
     }

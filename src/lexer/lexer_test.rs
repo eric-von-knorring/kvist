@@ -54,6 +54,7 @@ mod test {
         (while (false) (\"hello\"))\
         (when (false) (\"hello\") (true) (\"world\"))\
         (.. ...)\
+        (include \"file.kvist\")
         ";
 
         let expected = [
@@ -167,6 +168,10 @@ mod test {
             (TokenType::LParen, "("),
             (TokenType::DoubleDot, ".."),
             (TokenType::Ellipsis, "..."),
+            (TokenType::RParen, ")"),
+            (TokenType::LParen, "("),
+            (TokenType::Include, "include"),
+            (TokenType::String, "file.kvist"),
             (TokenType::RParen, ")"),
             (TokenType::EOF, ""),
         ];

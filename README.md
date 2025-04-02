@@ -104,6 +104,9 @@ cargo install --path .
 (vararg 1 2 3 4)
 (vararg 1 2)
 
+# Other script-files can be run in the current scope by including them
+(include "samples/hello_world.kvist")
+
 # Builtins
 
     (args) # Gets the program arguments as an array

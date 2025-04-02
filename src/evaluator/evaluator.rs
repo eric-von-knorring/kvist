@@ -4,6 +4,7 @@ use crate::ast::ast::{Node, Program};
 use crate::ast::expression::Expression;
 use crate::evaluator::builtin::builtins;
 use crate::evaluator::error::{ContextualEvaluationError, EvaluationError};
+use crate::evaluator::include::include_script;
 use crate::object::environment::Environment;
 use crate::object::object::{Object, Viewable};
 
@@ -41,6 +42,7 @@ impl Eval for Node {
             Expression::While(condition, Some(loop_body)) => eval_while_body_expression(condition, loop_body, environment),
             Expression::Function(params, vararg, body) => Object::Function(params.clone(), vararg.clone(), body.clone(), environment.clone().into()).into(),
             Expression::Section(section) => eval_scope_section(section, environment),
+            Expression::Include(target) => eval_include_expression(target, environment),
         }.map_err(|err| match err {
             EvaluationError::Simple(message) => self.to_error(message),
             err @ _ => err,
@@ -151,6 +153,13 @@ fn eval_expression_nodes(nodes: &[Node], environment: &mut Environment) -> Resul
 
 fn eval_scope_section(node: &Box<Node>, environment: &mut Environment) -> Result<Object, EvaluationError> {
     node.eval(&mut Environment::from(Rc::from(environment.clone())))
+}
+
+fn eval_include_expression(target: &Box<Node>, environment: &mut Environment) -> Result<Object, EvaluationError> {
+    match target.eval(environment)? {
+        Object::String(target_path) => include_script(target_path.as_ref(), environment),
+        _ => target.to_error("Illegal include expression. Expected target to be a string.".to_owned()).into(),
+    }
 }
 
 

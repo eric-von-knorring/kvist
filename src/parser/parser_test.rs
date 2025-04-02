@@ -543,6 +543,22 @@ mod parser_test {
         };
         assert_eq!("c", param.as_ref());
     }
+
+    #[test]
+    fn test_include_expression() {
+        let input = "(include \"file.kvist\")";
+
+        let lexer = Lexer::from(input);
+        let parser = Parser::from(lexer);
+        let program = parser.parse_program().unwrap();
+
+        assert_eq!(1, program.nodes.len(), "Expected 1 node in program for input: {input}");
+
+        let Expression::Include(file) = &program.nodes[0].expression else {
+            panic!("Expected index-expression got={:?}", program.nodes[0].expression);
+        };
+        assert_eq!(Expression::String("file.kvist".into()), file.expression);
+    }
 }
 
 enum Expected {
