@@ -4,21 +4,29 @@ use std::process::{Command, Stdio};
 use std::rc::Rc;
 use std::{env, io};
 
-pub fn builtins(name: &str) -> Option<Object> {
-    match name {
-        "args" => Some(Object::Builtin(args)),
-        "println" => Some(Object::Builtin(println)),
-        "readln" => Some(Object::Builtin(readln)),
-        "len" => Some(Object::Builtin(len)),
-        "first" => Some(Object::Builtin(first)),
-        "last" => Some(Object::Builtin(last)),
-        "rest" => Some(Object::Builtin(rest)),
-        "push" => Some(Object::Builtin(push)),
-        "parse_int" => Some(Object::Builtin(parse_int)),
-        "os_execute" => Some(Object::Builtin(os_execute)),
-        "exit" => Some(Object::Builtin(exit)),
-        &_ => None,
-    }
+macro_rules! builtins {
+   ($($name:ident),*$(,)?) => {
+       pub fn builtins(name: &str) -> Option<Object> {
+           match name {
+               $(stringify!($name) => Some(Object::Builtin($name)),)*
+               &_ => None
+           }
+       }
+   };
+}
+
+builtins! {
+    args,
+    println,
+    readln,
+    len,
+    first,
+    last,
+    rest,
+    push,
+    parse_int,
+    os_execute,
+    exit,
 }
 
 fn args(args: Box<[Object]>) -> Result<Object, String> {
