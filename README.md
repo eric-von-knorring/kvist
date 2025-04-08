@@ -104,6 +104,15 @@ cargo install --path .
 (vararg 1 2 3 4)
 (vararg 1 2)
 
+# Arrays can be expanded as paramters with the spread-operator
+(add ..[2 3])
+(set (numbers [3 4])
+(add ..numbers)
+(+ ..[2 3] ..numbers)
+
+# The speard-oeprator can also be used to combine arrays
+[..[1 2] ..numbers] # Becomes [1 2 3 4]
+
 # Other script-files can be run in the current scope by including them
 (include "samples/hello_world.kvist")
 

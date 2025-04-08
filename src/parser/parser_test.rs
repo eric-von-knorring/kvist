@@ -267,6 +267,49 @@ mod parser_test {
     }
 
     #[test]
+    fn test_spread_expression() {
+        let input = "(.. [1 2 3])";
+
+        let lexer = Lexer::from(input);
+        let parser = Parser::from(lexer);
+        let program = parser.parse_program().unwrap();
+
+        assert_eq!(1, program.nodes.len(), "Expected 1 node in program for input: {input}");
+
+        let Expression::Spread(operand) = &program.nodes[0].expression else {
+            panic!("Expected index-expression got={:?}", program.nodes[0].expression);
+        };
+
+        let Expression::Array(ref nodes) = operand.expression else {
+            panic!("Expected array-expression got={:?}", program.nodes[0].expression);
+        };
+
+        assert_eq!(3, nodes.len(), "input {input}");
+
+        assert_eq!(Expression::Integer(1), nodes[0].expression, "input {input}");
+        assert_eq!(Expression::Integer(2), nodes[1].expression, "input {input}");
+        assert_eq!(Expression::Integer(3), nodes[2].expression, "input {input}");
+
+        let input = "(..foobar)";
+
+        let lexer = Lexer::from(input);
+        let parser = Parser::from(lexer);
+        let program = parser.parse_program().unwrap();
+
+        assert_eq!(1, program.nodes.len(), "Expected 1 node in program for input: {input}");
+
+        let Expression::Spread(operand) = &program.nodes[0].expression else {
+            panic!("Expected index-expression got={:?}", program.nodes[0].expression);
+        };
+
+        let Expression::Identifier(ref identifier) = operand.expression else {
+            panic!("Expected identifier-expression got={:?}", program.nodes[0].expression);
+        };
+
+        assert_eq!("foobar", identifier.as_ref());
+    }
+
+    #[test]
     fn test_if_expression() {
         let input = "(if (< 1 2) x)";
 

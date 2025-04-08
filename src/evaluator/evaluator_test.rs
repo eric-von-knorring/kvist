@@ -175,6 +175,55 @@ mod test {
     }
 
     #[test]
+    fn test_spread_operator() {
+        let tests = [
+            ("..[7 5 2]", Object::Spread([Object::Integer(7), Object::Integer(5), Object::Integer(2)].into())),
+            ("(..[7 5 2])", Object::Integer(2)),
+            ("(10 ..[7 5 2])", Object::Integer(2)),
+            ("(..[7 5 2] 10)", Object::Integer(10)),
+            ("(..[])", Object::Unit),
+            ("(set (arr [7 5 2])) ..arr", Object::Spread([Object::Integer(7), Object::Integer(5), Object::Integer(2)].into())),
+            ("(set (arr [7 5 2])) (..arr)", Object::Integer(2)),
+            ("(set (arr ..[7 5 2])) arr", Object::Integer(2)),
+            ("(set (res (..[7 5 2]))) res", Object::Integer(2)),
+            ("(+ ..[7 5 2])", Object::Integer(14)),
+            ("(+ 7 ..[5 2])", Object::Integer(14)),
+            ("(+ ..[7 5] 2)", Object::Integer(14)),
+            ("(- ..[13 5 2])", Object::Integer(6)),
+            ("(- 13 ..[5 2])", Object::Integer(6)),
+            ("(- ..[13 5] 2)", Object::Integer(6)),
+            ("(* ..[7 5 2])", Object::Integer(70)),
+            ("(* 7 ..[5 2])", Object::Integer(70)),
+            ("(* ..[7 5] 2)", Object::Integer(70)),
+            ("(/ ..[16 4 2])", Object::Integer(2)),
+            ("(/ 16 ..[4 2])", Object::Integer(2)),
+            ("(/ ..[16 4] 2)", Object::Integer(2)),
+            ("(< ..[6 14 22])", Object::Boolean(true)),
+            ("(< 6 ..[14 22])", Object::Boolean(true)),
+            ("(< ..[6 14] 22)", Object::Boolean(true)),
+            ("(> ..[16 4 2])", Object::Boolean(true)),
+            ("(> 16 ..[4 2])", Object::Boolean(true)),
+            ("(> ..[16 4] 2)", Object::Boolean(true)),
+            ("(= ..[3 3 3])", Object::Boolean(true)),
+            ("(= 3 ..[3 3])", Object::Boolean(true)),
+            ("(= ..[3 3] 3)", Object::Boolean(true)),
+            ("(! ..[true])", Object::Boolean(false)),
+            ("(! ..[false])", Object::Boolean(true)),
+            ("(! ..[1])", Object::Boolean(false)),
+            ("(! ..[\"text\"])", Object::Boolean(false)),
+            ("[..[1 2] ..[3 4]]", vec![Object::Integer(1), Object::Integer(2), Object::Integer(3), Object::Integer(4)].into()),
+            ("(set (a [1 2]) (b [2 3])) [..[1 2] ..[3 4]]", vec![Object::Integer(1), Object::Integer(2), Object::Integer(3), Object::Integer(4)].into()),
+            ("(set (func (fn |a b| b)) (arr [2 3])) (func ..arr) ", Object::Integer(3)),
+            ("(set (func (fn |a b| b))) (func ..[2 3])", Object::Integer(3)),
+        ];
+
+        for (input, expected) in tests {
+            let evaluated = apply_eval(input).expect(format!("Coult not evaulate {input} Expected {expected}").as_str());
+            assert_eq!(expected, evaluated, "Failed at {}", input);
+        }
+    }
+
+    #[test]
     fn test_if_expression() {
         let tests = [
             ("(if (true) \"hello\")", Object::String(Rc::from("hello"))),
@@ -294,7 +343,7 @@ mod test {
         // let program = Parser::new(Lexer::new(input)).parse_program();
         let lexer = Lexer::from(input);
         let parser = Parser::from(lexer);
-        let program = parser.parse_program().unwrap();
+        let program = parser.parse_program().expect(format!("Failed to parse program: {}", input).as_str());
 
         program.eval(&mut Environment::new())
     }

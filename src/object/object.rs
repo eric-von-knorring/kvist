@@ -12,10 +12,29 @@ pub enum Object {
     Boolean(bool),
     String(Rc<str>),
     Array(Rc<[Object]>),
+    Spread(Rc<[Object]>),
     Function(Rc<[Node]>, Rc<Option<Node>>, Rc<Node>, Rc<Environment>),
     Builtin(fn(Box<[Object]>) -> Result<Object, String>),
     // Null,
     Undefined,
+}
+
+impl Object {
+
+    pub fn expand_spread(self, mut consumer: impl FnMut(Object) -> ()) {
+        match self {
+            Object::Spread(operand) => operand.iter()
+                .for_each( |object| consumer(object.clone())),
+            object @ _ => consumer(object),
+        }
+    }
+
+    pub fn spread_to_single(self) -> Option<Object> {
+        match self {
+            Object::Spread(operand) => operand.last().map(|object| object.clone()),
+            object @ _ => object.into(),
+        }
+    }
 }
 
 pub(crate) trait Viewable {
@@ -41,6 +60,12 @@ impl Viewable for Object {
             // TODO proper formatted viewable
             Object::Function(_, _, _, _) => "(fn)".to_string(),
             Object::Builtin(_) => "(builtin)".to_string(),
+            Object::Spread(values) => format!("..[{}]", values.iter()
+                .map(|object | object.view())
+                // .reduce(|acc, c| acc + ", " + &c)
+                .reduce(|acc, c| acc + " " + &c)
+                .unwrap_or("".to_string())
+            ),
         }
     }
 }
@@ -58,6 +83,7 @@ impl Display for Object {
             Object::Undefined => write!(f, "Undefined"),
             Object::Function(_, _, _, _) => write!(f, "Function"),
             Object::Builtin(_) => write!(f, "Builtin"),
+            Object::Spread(_) => write!(f, "Spread"),
         }
     }
 }
