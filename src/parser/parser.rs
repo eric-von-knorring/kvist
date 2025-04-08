@@ -139,6 +139,7 @@ impl Parser<'_> {
             TokenType::LBracket => self.parse_array_literal(),
             TokenType::Ident => self.parse_identifier().into(),
             TokenType::At => self.parse_index_operator(),
+            TokenType::DoubleDot => self.parse_spread_operator(),
             TokenType::Plus
             | TokenType::Minus
             | TokenType::Asterisk
@@ -400,6 +401,16 @@ impl Parser<'_> {
 
         Node {
             expression: Expression::Index(index.into(), operand.into()),
+            token: current,
+        }.into()
+    }
+
+    fn parse_spread_operator(&mut self) -> Result<Node, ParseError> {
+        let current = self.next_token();
+        let target = self.parse_expression()?;
+
+        Node {
+            expression: Expression::Spread(target.into()),
             token: current,
         }.into()
     }
