@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::rc::Rc;
 
 use crate::ast::ast::{Node, Program};
@@ -43,6 +44,7 @@ impl Eval for Node {
             Expression::Function(params, vararg, body) => Object::Function(params.clone(), vararg.clone(), body.clone(), environment.clone().into()).into(),
             Expression::Section(section) => eval_scope_section(section, environment),
             Expression::Include(target) => eval_include_expression(target, environment),
+            Expression::Spread(operand) => eval_spread_expression(operand.eval(environment)?),
         }.map_err(|err| match err {
             EvaluationError::Simple(message) => self.to_error(message),
             err @ _ => err,
@@ -80,6 +82,13 @@ fn eval_index_expression(index: Object, operand: Object) -> Result<Object, Evalu
     }
 }
 
+fn eval_spread_expression(operand: Object) -> Result<Object, EvaluationError> {
+    match operand {
+        Object::Array(array) => Object::Spread(array).into(),
+        operand @ _ => Err(format!("Spread-operator not allowed on '{operand}'.").into()),
+    }
+}
+
 fn eval_expression_literal(nodes: &[Node], environment: &mut Environment) -> Result<Object, EvaluationError> {
     let Some(node) = nodes.get(0) else {
         return Object::Unit.into();
@@ -106,14 +115,28 @@ fn eval_expression_literal(nodes: &[Node], environment: &mut Environment) -> Res
 }
 
 fn eval_function_call(node: &Node, params: Rc<[Node]>, vararg: Rc<Option<Node>>, nodes: &[Node], body: Rc<Node>, function_environment: &mut Environment, environment: &mut Environment) -> Result<Object, EvaluationError> {
-    for (index, param) in params.iter().enumerate() {
+    let mut args_queue = VecDeque::new();
+    while args_queue.len() < params.len() {
+        if let Some(node) = nodes.get(args_queue.len() + 1) {
+            // match node.eval(environment)? {
+            //     Object::Spread(operand) => operand.iter().for_each(|object| args.push_back(object.clone())),
+            //     object @ _ => args.push_back(object),
+            // }
+            node.eval(environment)?
+                .expand_spread(|object| args_queue.push_back(object));
+        } else { break; }
+    }
+
+    for  param in params.iter() {
         let Expression::Identifier(ref name) = param.expression else {
             return Err(node.to_error(format!("Illegal function parameter type {param:?}")));
         };
 
-        let value = nodes.get(index + 1)
-            .ok_or(node.to_error(format!("Missing parameter value for {name}")))?
-            .eval(environment)?;
+        // let value = nodes.get(index + 1)
+        //     .ok_or(node.to_error(format!("Missing parameter value for {name}")))?
+        //     .eval(environment)?;
+        let value = args_queue.pop_front()
+            .ok_or(node.to_error(format!("Missing parameter value for {name}")))?;
         function_environment.set(name.clone(), value)
     }
 
@@ -123,8 +146,18 @@ fn eval_function_call(node: &Node, params: Rc<[Node]>, vararg: Rc<Option<Node>>,
         };
         let mut args = Vec::new();
 
+        while let Some(arg) = args_queue.pop_front() {
+            args.push(arg);
+        }
+
         for node in nodes[params.len()+1..].iter() {
-            args.push(node.eval(environment)?);
+            // args.push(node.eval(environment)?);
+            // match node.eval(environment)? {
+            //     Object::Spread(operand) => operand.iter().for_each(|object| args.push(object.clone())),
+            //     object @ _ => args.push(object),
+            // }
+            node.eval(environment)?
+                .expand_spread(|object| args.push(object));
         }
         function_environment.set(name.clone(), Object::Array(args.into()))
     }
@@ -135,7 +168,12 @@ fn eval_function_call(node: &Node, params: Rc<[Node]>, vararg: Rc<Option<Node>>,
 fn eval_builtin(builtin: fn(Box<[Object]>) -> Result<Object, String>, args: &[Node], environment: &mut Environment) -> Result<Object, EvaluationError> {
     let mut param = Vec::new();
     for arg in args {
-        param.push(arg.eval(environment)?)
+        // param.push(arg.eval(environment)?)
+        // match arg.eval(environment)? {
+        //     Object::Spread(operand) => operand.iter().for_each(|object| param.push(object.clone())),
+        //     object @ _ => args.push(object),
+        // }
+        arg.eval(environment)?.expand_spread(|object| param.push(object));
     }
     match builtin(param.into()) {
         Ok(result) => result.into(),
@@ -146,7 +184,13 @@ fn eval_builtin(builtin: fn(Box<[Object]>) -> Result<Object, String>, args: &[No
 fn eval_expression_nodes(nodes: &[Node], environment: &mut Environment) -> Result<Object, EvaluationError> {
     let mut result = Object::Unit;
     for node in nodes {
-        result = node.eval(environment)?;
+        result = node.eval(environment)?
+            .spread_to_single()
+            .unwrap_or(result);
+        // result = match node.eval(environment)? {
+        //     Object::Spread(operand) => operand.last().map(|object|object.clone()).unwrap_or(result),
+        //     object @ _ => object,
+        // };
     }
     return result.into();
 }
@@ -182,7 +226,9 @@ fn eval_if_expression(condition: &Box<Node>,
                       consequence: &Box<Node>,
                       alternative: &Option<Box<Node>>,
                       environment: &mut Environment) -> Result<Object, EvaluationError> {
-    let condition = condition.eval(environment)?;
+    let Some(condition) = condition.eval(environment)?.spread_to_single() else {
+        return condition.to_error(format!("Failed to evaluate to condition '{:?}'.", condition.expression)).into();
+    };
 
     return if is_truthy(&condition) {
         consequence.eval(environment)
@@ -197,7 +243,10 @@ fn eval_when_expression(branches: &Box<[(Box<Node>, Box<Node>)]>, environment: &
     let mut condition_result = Object::Unit;
 
     for (condition, consequence) in branches.iter() {
-        condition_result = condition.eval(environment)?;
+        condition_result = if let Some(cond) = condition.eval(environment)?.spread_to_single() { cond } else {
+            return condition.to_error(format!("Failed to evaluate to condition '{:?}'. Result was empty.", condition.expression)).into();
+        };
+
         if is_truthy(&condition_result) {
             return consequence.eval(environment);
         }
@@ -207,7 +256,9 @@ fn eval_when_expression(branches: &Box<[(Box<Node>, Box<Node>)]>, environment: &
 
 fn eval_while_expression(condition: &Box<Node>, environment: &mut Environment) -> Result<Object, EvaluationError> {
     loop {
-        let condition = condition.eval(environment)?;
+        let Some(condition) = condition.eval(environment)?.spread_to_single() else {
+            return condition.to_error(format!("Failed to evaluate to condition '{:?}'. Result was empty.", condition.expression)).into();
+        };
         if !is_truthy(&condition) {
             return condition.into();
         }
@@ -216,7 +267,9 @@ fn eval_while_expression(condition: &Box<Node>, environment: &mut Environment) -
 
 fn eval_while_body_expression(condition: &Box<Node>, loop_body: &Box<Node>, environment: &mut Environment) -> Result<Object, EvaluationError> {
     loop {
-        let condition = condition.eval(environment)?;
+        let Some(condition) = condition.eval(environment)?.spread_to_single() else {
+            return condition.to_error(format!("Failed to evaluate to condition '{:?}'. Result was empty.", condition.expression)).into();
+        };
         if !is_truthy(&condition) {
             return condition.into();
         }
@@ -238,111 +291,164 @@ fn eval_identifier(identifier: &Rc<str>, environment: &mut Environment) -> Resul
 fn eval_array_expression(nodes: &Box<[Node]>, environment: &mut Environment) -> Result<Object, EvaluationError> {
     let mut objects = Vec::new();
     for node in nodes.iter() {
-        objects.push(node.eval(environment)?);
+        node.eval(environment)?.expand_spread(|object| objects.push(object));
     }
 
     return Object::Array(Rc::from(objects)).into();
 }
 
 fn eval_prefix_expression(operator: &Rc<str>, operands: &[Node], environment: &mut Environment) -> Result<Object, EvaluationError> {
+    let mut operand_objects = VecDeque::new();
+    for operand in operands {
+        operand.eval(environment)?.expand_spread(|operand| operand_objects.push_back(operand));
+    }
     match operator.as_ref() {
-        "+" => plus_operator(operands, environment),
-        "-" => minus_operator(operands, environment),
-        "*" => multiply_operator(operands, environment),
-        "/" => divide_operator(operands, environment),
-        "<" => lesser_then_operator(operands, environment),
-        ">" => greater_then_operator(operands, environment),
-        "=" => equals_operator(operands, environment),
-        "!" => not_operator(operands, environment),
+        "+" => plus_operator(operand_objects),
+        "-" => minus_operator(operand_objects),
+        "*" => multiply_operator(operand_objects),
+        "/" => divide_operator(operand_objects),
+        "<" => lesser_then_operator(operand_objects),
+        ">" => greater_then_operator(operand_objects),
+        "=" => equals_operator(operand_objects),
+        "!" => not_operator(operand_objects),
+        // "+" => plus_operator(operands, environment),
+        // "-" => minus_operator(operands, environment),
+        // "*" => multiply_operator(operands, environment),
+        // "/" => divide_operator(operands, environment),
+        // "<" => lesser_then_operator(operands, environment),
+        // ">" => greater_then_operator(operands, environment),
+        // "=" => equals_operator(operands, environment),
+        // "!" => not_operator(operands, environment),
         _ => Err(format!("unknown operator '{operator}'").into()),
     }
 }
 
 
 // fn plus_operator(left: Object, right: Object) -> Result<Object, String>{
-fn plus_operator(operands: &[Node], environment: &mut Environment) -> Result<Object, EvaluationError> {
+fn plus_operator(mut operands: VecDeque<Object>) -> Result<Object, EvaluationError> {
     if operands.is_empty() {
         return Object::Integer(0).into();
     }
     if operands.len() == 1 {
-        return operands[0].eval(environment);
+        return operands.pop_front()
+            .ok_or("Could not eval + operator".to_string().into());
     }
-    operands.iter()
-        .map(|node| node.eval(environment))
-        .reduce(|left, right| {
-            match (left?, right?) {
-                (Object::Integer(left), Object::Integer(right)) => { Object::Integer(left + right).into() }
+    // operands.iter()
+    //     // .map(|node| node.eval(environment))
+    //     .reduce(|left, right| {
+    //         match (left, right) {
+    //             (Object::Integer(left), Object::Integer(right)) => { Object::Integer(left + right).into() }
+    //             (Object::Float(left), Object::Integer(right)) => Object::Float(left + f64::from(right)).into(),
+    //             (Object::Integer(left), Object::Float(right)) => Object::Float(f64::from(left) + right).into(),
+    //             (Object::Float(left), Object::Float(right)) => Object::Float(left + right).into(),
+    //
+    //             (Object::String(left), right @ _) => Object::String(format!("{left}{}", right.view()).into()).into(),
+    //             (left @ _, Object::String(right)) => Object::String(format!("{}{right}", left.view()).into()).into(),
+    //             (left @ _, right @ _) => Err(format!("Type mismatch (+ {left} {right})").into())?,
+    //         }
+    //     }).into();
+        // .unwrap_or(Err("Could not eval operator".to_string().into()))
 
-                (Object::Float(left), Object::Integer(right)) => Object::Float(left + f64::from(right)).into(),
-                (Object::Integer(left), Object::Float(right)) => Object::Float(f64::from(left) + right).into(),
-                (Object::Float(left), Object::Float(right)) => Object::Float(left + right).into(),
+    let mut left = operands.pop_front()
+        .ok_or(EvaluationError::from("Could not eval + operator".to_string()))?;
 
-                (Object::String(left), right @ _) => Object::String(format!("{left}{}", right.view()).into()).into(),
-                (left @ _, Object::String(right)) => Object::String(format!("{}{right}", left.view()).into()).into(),
-                (left @ _, right @ _) => Err(format!("Type mismatch (+ {left} {right})").into()),
-            }
-        }).unwrap_or(Err("Could not eval operator".to_string().into()))
+    while let Some(right) = operands.pop_front() {
+        left = match (left, right) {
+            (Object::Integer(left), Object::Integer(right)) => { Object::Integer(left + right).into() }
+            (Object::Float(left), Object::Integer(right)) => Object::Float(left + f64::from(right)).into(),
+            (Object::Integer(left), Object::Float(right)) => Object::Float(f64::from(left) + right).into(),
+            (Object::Float(left), Object::Float(right)) => Object::Float(left + right).into(),
+
+            (Object::String(left), right @ _) => Object::String(format!("{left}{}", right.view()).into()).into(),
+            (left @ _, Object::String(right)) => Object::String(format!("{}{right}", left.view()).into()).into(),
+            (left @ _, right @ _) => return EvaluationError::from(format!("Type mismatch (+ {left} {right})").to_string()).into(),
+        }
+    }
+    Ok(left)
 }
 
-fn minus_operator(operands: &[Node], environment: &mut Environment) -> Result<Object, EvaluationError> {
+fn minus_operator(mut operands: VecDeque<Object>) -> Result<Object, EvaluationError> {
     if operands.is_empty() {
         return Object::Integer(0).into();
     }
     if operands.len() == 1 {
-        let object = operands[0].eval(environment)?;
-        return match operands[0].eval(environment)? {
+        // let object = operands[0].eval(environment)?;
+        return match operands.pop_front()
+            .ok_or(EvaluationError::from("Could not eval + operator".to_string()))? {
             Object::Integer(value) => Object::Integer(0 - value).into(),
             Object::Float(value) => Object::Float(0. - value).into(),
-            _ => Err(operands[0].to_error(format!("Type mismatch (- {object})"))),
+            object @ _ => EvaluationError::from(format!("Type mismatch (- {object})")).into(),
         };
     }
-    operands.iter()
-        .map(|node| node.eval(environment))
-        .reduce(|left, right| {
-            match (left?, right?) {
-                (Object::Integer(left), Object::Integer(right)) => Object::Integer(left - right).into(),
+    // operands.iter()
+    //     .map(|node| node.eval(environment))
+    //     .reduce(|left, right| {
+    //         match (left?, right?) {
+    //             (Object::Integer(left), Object::Integer(right)) => Object::Integer(left - right).into(),
+    //
+    //             (Object::Float(left), Object::Integer(right)) => Object::Float(left - f64::from(right)).into(),
+    //             (Object::Integer(left), Object::Float(right)) => Object::Float(f64::from(left) - right).into(),
+    //             (Object::Float(left), Object::Float(right)) => Object::Float(left - right).into(),
+    //
+    //             (left @ _, right @ _) => Err(format!("Type mismatch (- {left} {right})").into()),
+    //         }
+    //     }).unwrap_or(Err("Could not eval operator".to_string().into()));
 
-                (Object::Float(left), Object::Integer(right)) => Object::Float(left - f64::from(right)).into(),
-                (Object::Integer(left), Object::Float(right)) => Object::Float(f64::from(left) - right).into(),
-                (Object::Float(left), Object::Float(right)) => Object::Float(left - right).into(),
+    let mut left = operands.pop_front()
+        .ok_or(EvaluationError::from("Could not eval - operator".to_string()))?;
 
-                (left @ _, right @ _) => Err(format!("Type mismatch (- {left} {right})").into()),
-            }
-        }).unwrap_or(Err("Could not eval operator".to_string().into()))
+    while let Some(right) = operands.pop_front() {
+        left = match (left, right) {
+            (Object::Integer(left), Object::Integer(right)) => Object::Integer(left - right).into(),
+
+            (Object::Float(left), Object::Integer(right)) => Object::Float(left - f64::from(right)).into(),
+            (Object::Integer(left), Object::Float(right)) => Object::Float(f64::from(left) - right).into(),
+            (Object::Float(left), Object::Float(right)) => Object::Float(left - right).into(),
+
+            (left @ _, right @ _) => return EvaluationError::from(format!("Type mismatch (+ {left} {right})").to_string()).into(),
+        }
+    }
+    Ok(left)
 }
 
-fn multiply_operator(operands: &[Node], environment: &mut Environment) -> Result<Object, EvaluationError> {
+fn multiply_operator(operands: VecDeque<Object>) -> Result<Object, EvaluationError> {
     let mut product = Object::Integer(1);
     for operand in operands {
-        product = match (product, operand.eval(environment)?) {
+        product = match (product, operand) {
             (Object::Integer(left), Object::Integer(right)) => Object::Integer(left * right),
             (Object::Float(left), Object::Integer(right)) => Object::Float(left * f64::from(right)),
             (Object::Integer(left), Object::Float(right)) => Object::Float(f64::from(left) * right),
             (Object::Float(left), Object::Float(right)) => Object::Float(left * right),
-            (left @ _, right @ _) => return Err(operand.to_error(format!("Type mismatch (* {left} {right})"))),
+            (left @ _, right @ _) => return EvaluationError::from(format!("Type mismatch (* {left} {right})").to_string()).into(),
         };
     }
 
-    return product.into();
+    product.into()
 }
 
-fn divide_operator(operands: &[Node], environment: &mut Environment) -> Result<Object, EvaluationError> {
+fn divide_operator(mut operands: VecDeque<Object>) -> Result<Object, EvaluationError> {
     if operands.len() == 0 {
         return Object::Undefined.into();
     }
     if let Some(single) = operands.single() {
-        return match single.eval(environment)? {
+        return match single {
             Object::Integer(0)   => Object::Undefined.into(),
             Object::Float(value) if value == 0. => Object::Undefined.into(),
             Object::Integer(value) => Object::Float(1. / f64::from(value)).into(),
             Object::Float(value) => Object::Float(1. / value).into(),
-            object @ _ => single.to_error(format!("Type mismatch (/ {object})")).into()
+            // object @ _ => single.to_error(format!("Type mismatch (/ {object})")).into()
+            object @ _ => EvaluationError::from(format!("Type mismatch (/ {object})").to_string()).into(),
         };
     }
 
-    let mut result = operands[0].eval(environment)?;
-    for operand in operands[1..].iter() {
-        result = match (result, operand.eval(environment)?) {
+    // let mut result = operands[0].eval(environment)?;
+    let Some(mut result) = operands.pop_front() else {
+        // .ok_or()?;
+        return EvaluationError::from("Could not eval / operator".to_string()).into();
+    };
+
+    for operand in operands {
+        result = match (result, operand) {
             (_, Object::Integer(0)) => Object::Undefined.into(),
             (_, Object::Float(value)) if value == 0. => Object::Undefined.into(),
             (Object::Integer(left), Object::Integer(right)) => no_truncating_division(left, right),
@@ -353,7 +459,7 @@ fn divide_operator(operands: &[Node], environment: &mut Environment) -> Result<O
         }
     }
 
-    return result.into();
+    result.into()
 }
 
 fn no_truncating_division(left: i32, right: i32) -> Object {
@@ -364,14 +470,17 @@ fn no_truncating_division(left: i32, right: i32) -> Object {
     }
 }
 
-fn lesser_then_operator(operands: &[Node], environment: &mut Environment) -> Result<Object, EvaluationError> {
+fn lesser_then_operator(mut operands: VecDeque<Object>) -> Result<Object, EvaluationError> {
     if operands.len() <= 1 {
         return Object::Boolean(operands.len() == 1).into();
     }
     let mut result = true;
-    let mut left = operands[0].eval(environment)?;
-    for operand in operands[1..].iter() {
-        let right = operand.eval(environment)?;
+    // let mut left = operands[0].eval(environment)?;
+    let mut left = operands.pop_front()
+        .ok_or(EvaluationError::from("Could not eval < operator".to_string()))?;
+    for operand in operands {
+        // let right = operand.eval(environment)?;
+        let right = operand;
         result = match (&left, &right) {
             (Object::Integer(left), Object::Integer(right)) => left < right,
             (Object::Float(left), Object::Integer(right)) => *left < f64::from(*right),
@@ -384,17 +493,20 @@ fn lesser_then_operator(operands: &[Node], environment: &mut Environment) -> Res
         }
         left = right;
     }
-    return Object::Boolean(result).into();
+    Object::Boolean(result).into()
 }
 
-fn greater_then_operator(operands: &[Node], environment: &mut Environment) -> Result<Object, EvaluationError> {
+fn greater_then_operator(mut operands: VecDeque<Object>) -> Result<Object, EvaluationError> {
     if operands.len() <= 1 {
         return Object::Boolean(operands.len() == 1).into();
     }
     let mut result = true;
-    let mut left = operands[0].eval(environment)?;
-    for operand in operands[1..].iter() {
-        let right = operand.eval(environment)?;
+    // let mut left = operands[0].eval(environment)?;
+    let mut left = operands.pop_front()
+        .ok_or(EvaluationError::from("Could not eval < operator".to_string()))?;
+        // .ok_or("Could not eval > operator".to_string().into())?;
+    for operand in operands {
+        let right = operand;
         result = match (&left, &right) {
             (Object::Integer(left), Object::Integer(right)) => left > right,
             (Object::Float(left), Object::Integer(right)) => *left > f64::from(*right),
@@ -407,18 +519,20 @@ fn greater_then_operator(operands: &[Node], environment: &mut Environment) -> Re
         }
         left = right;
     }
-    return Object::Boolean(result).into();
+    Object::Boolean(result).into()
 }
 
-fn equals_operator(operands: &[Node], environment: &mut Environment) -> Result<Object, EvaluationError> {
+fn equals_operator(mut operands: VecDeque<Object>) -> Result<Object, EvaluationError> {
     if operands.len() <= 1 {
         return Object::Boolean(operands.len() == 1).into();
     }
-
     let mut result = true;
-    let mut left = operands[0].eval(environment)?;
-    for operand in operands[1..].iter() {
-        let right = operand.eval(environment)?;
+    let mut left = operands.pop_front()
+        .ok_or(EvaluationError::from("Could not eval > operator".to_string()))?;
+        // .ok_or("Could not eval > operator".to_string().into())?;
+
+    for operand in operands {
+        let right = operand;
         result = match (&left, &right) {
             (Object::Integer(left), Object::Integer(right)) => left == right,
             (Object::Float(left), Object::Integer(right)) => *left == f64::from(*right),
@@ -432,16 +546,17 @@ fn equals_operator(operands: &[Node], environment: &mut Environment) -> Result<O
         }
         left = right;
     }
-    return Object::Boolean(result).into();
+    Object::Boolean(result).into()
 }
 
-fn not_operator(operands: &[Node], environment: &mut Environment) -> Result<Object, EvaluationError> {
+fn not_operator(operands: VecDeque<Object>) -> Result<Object, EvaluationError> {
     if operands.len() > 1 {
         return Err(format!("Operator ! expects only 1 operand got {}", operands.len()).into());
     }
 
-    if let Some(node) = operands.get(0) {
-        Object::Boolean(!is_truthy(&node.eval(environment)?))
+    if let Some(object) = operands.get(0) {
+        // Object::Boolean(!is_truthy(&node.eval(environment)?))
+        Object::Boolean(!is_truthy(object))
     } else { Object::Boolean(true) }.into()
 }
 
@@ -462,14 +577,24 @@ impl<T> From<Object> for Result<Object, T> {
 }
 
 trait Single<T> {
-    fn single(&self) -> Option<&T>;
+    fn single(&mut self) -> Option<T>;
 }
 
 // impl Single<Node> for [Node] {
-impl<T> Single<T> for [T] {
-    fn single(&self) -> Option<&T> {
+// impl<T> Single<T> for [T] {
+//     fn single(&self) -> Option<&T> {
+//         if self.len() == 1 {
+//             return self.get(0);
+//         }
+//         None
+//     }
+// }
+
+impl <T> Single<T> for VecDeque<T> {
+
+    fn single(&mut self) -> Option<T> {
         if self.len() == 1 {
-            return self.get(0);
+            return self.pop_front()
         }
         None
     }
