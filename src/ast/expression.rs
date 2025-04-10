@@ -21,6 +21,7 @@ pub enum Expression {
     Function(Rc<[Node]>, Rc<Option<Node>>, Rc<Node>),
     Section(Box<Node>),
     Include(Box<Node>),
+    Spread(Box<Node>),
 }
 
 impl Expression {
