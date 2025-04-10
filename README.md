@@ -124,25 +124,9 @@ cargo install --path .
     (len ["one" "two" "three"]) # Gives the length of an array
     (first ["one" "two" "three"]) # Gets the first element of an array
     (last ["one" "two" "three"]) # Gets the last element of an array
-    (rest ["one" "two" "three"]) # Returns creates an array 
+    (rest ["one" "two" "three"]) # Returns a created array with all elemets excpet the first one
     (push ["one" "two" "three"] "four") # Returns a new array with the second paramter added to the end
     (parse_int "123") # Parses string an returns an integer
     (os_execute "ls" "-l" "-a") # Runs a system command and passes through stdin, stdout and stderr 
     (exit 0) # Exits the process with a given status code
 ```
-
-## TODO
-
- - [x] Add builtins
-   - [x] args
-   - [x] println
-   - [x] readln
-   - arrays
-     - [x] len
-     - [x] first
-     - [x] last
-     - [x] rest
-     - [x] push
- - [x] Add shebang support
- - [x] Add when-expression
- - [x] Refactor error handling
