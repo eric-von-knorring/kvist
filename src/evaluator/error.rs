@@ -1,5 +1,6 @@
 use std::fmt::{Display, Formatter};
-
+use crate::ast::ast::Node;
+use crate::object::object::Object;
 
 #[derive(Debug)]
 pub enum EvaluationError {
@@ -31,5 +32,24 @@ impl Display for EvaluationError {
             EvaluationError::Simple(message) => write!(f, "{}", message),
             EvaluationError::Contextual(error) => write!(f, "Row {}, Col: {}: {}", error.row, error.col, error.message),
         }
+    }
+}
+pub trait ToEvaluationError {
+    fn to_error(&self, message: String) -> EvaluationError;
+}
+
+impl ToEvaluationError for Node {
+    fn to_error(&self, message: String) -> EvaluationError {
+        ContextualEvaluationError {
+            col: self.token.col,
+            row: self.token.row,
+            message,
+        }.into()
+    }
+}
+
+impl From<EvaluationError> for Result<Object, EvaluationError> {
+    fn from(value: EvaluationError) -> Self {
+        Err(value)
     }
 }

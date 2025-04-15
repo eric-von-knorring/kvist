@@ -4,10 +4,11 @@ use std::rc::Rc;
 use crate::ast::ast::{Node, Program};
 use crate::ast::expression::Expression;
 use crate::evaluator::builtin::builtins;
-use crate::evaluator::error::{ContextualEvaluationError, EvaluationError};
+use crate::evaluator::error::{EvaluationError, ToEvaluationError};
 use crate::evaluator::include::include_script;
+use crate::evaluator::operator_expression::eval_operator_expression;
 use crate::object::environment::Environment;
-use crate::object::object::{Object, Viewable};
+use crate::object::object::Object;
 
 pub trait Eval {
     fn eval(&self, environment: &mut Environment) -> Result<Object, EvaluationError>;
@@ -36,7 +37,7 @@ impl Eval for Node {
             Expression::String(value) => Object::String(value.clone()).into(),
             Expression::Array(nodes) => eval_array_expression(nodes, environment),
             Expression::Index(index, operands) => eval_index_expression(index.eval(environment)?, operands.eval(environment)?),
-            Expression::Prefix(operator, operands) => eval_prefix_expression(&operator, &operands, environment),
+            Expression::Operator(operator, operands) => eval_operator_expression(&operator, &operands, environment),
             Expression::If(condition, consequence, alternative) => eval_if_expression(condition, consequence, alternative, environment),
             Expression::When(branches) => eval_when_expression(branches, environment),
             Expression::While(condition, None) => eval_while_expression(condition, environment),
@@ -49,26 +50,6 @@ impl Eval for Node {
             EvaluationError::Simple(message) => self.to_error(message),
             err @ _ => err,
         })
-    }
-}
-
-pub trait ToEvaluationError {
-    fn to_error(&self, message: String) -> EvaluationError;
-}
-
-impl ToEvaluationError for Node {
-    fn to_error(&self, message: String) -> EvaluationError {
-        ContextualEvaluationError {
-            col: self.token.col,
-            row: self.token.row,
-            message,
-        }.into()
-    }
-}
-
-impl From<EvaluationError> for Result<Object, EvaluationError> {
-    fn from(value: EvaluationError) -> Self {
-        Err(value)
     }
 }
 
@@ -215,7 +196,7 @@ fn eval_if_expression(condition: &Box<Node>,
         .unwrap_or(Object::Unit);
 
 
-    return if is_truthy(&condition) {
+    return if condition.is_truthy() {
         consequence.eval(environment)
     } else if let Some(alternative) = alternative {
         alternative.eval(environment)
@@ -232,7 +213,7 @@ fn eval_when_expression(branches: &Box<[(Box<Node>, Box<Node>)]>, environment: &
             .spread_to_single()
             .unwrap_or(Object::Unit);
 
-        if is_truthy(&condition_result) {
+        if condition_result.is_truthy() {
             return consequence.eval(environment);
         }
     };
@@ -244,7 +225,7 @@ fn eval_while_expression(condition: &Box<Node>, environment: &mut Environment) -
         let condition = condition.eval(environment)?
             .spread_to_single()
             .unwrap_or(Object::Unit);
-        if !is_truthy(&condition) {
+        if !&condition.is_truthy() {
             return condition.into();
         }
     }
@@ -255,7 +236,7 @@ fn eval_while_body_expression(condition: &Box<Node>, loop_body: &Box<Node>, envi
         let condition = condition.eval(environment)?
             .spread_to_single()
             .unwrap_or(Object::Unit);
-        if !is_truthy(&condition) {
+        if !&condition.is_truthy() {
             return condition.into();
         }
         loop_body.eval(environment)?;
@@ -280,286 +261,4 @@ fn eval_array_expression(nodes: &Box<[Node]>, environment: &mut Environment) -> 
     }
 
     return Object::Array(Rc::from(objects)).into();
-}
-
-struct QueuedEvaluator<'a> {
-    buf: VecDeque<Object>,
-    index: usize,
-    nodes: &'a[Node],
-    environment: &'a mut Environment,
-}
-
-impl QueuedEvaluator<'_> {
-
-    fn new<'a>(nodes: &'a[Node], environment: &'a mut Environment) -> QueuedEvaluator<'a> {
-        QueuedEvaluator {
-            buf: Default::default(),
-            index: 0,
-            nodes,
-            environment,
-        }
-    }
-
-    fn next(&mut self) -> Option<Result<Object, EvaluationError>> {
-        if let Some(object) = self.buf.pop_front() {
-            return Result::from(object).into();
-        }
-        let Some(node) = self.nodes.get(self.index) else {
-            return None;
-        };
-        let result = match node.eval(self.environment) {
-            Ok(Object::Spread(objects)) => {
-                for object in &objects[1..] {
-                    self.buf.push_back(object.clone());
-                }
-                objects.get(0).map(|o| o.clone())
-                    .ok_or(node.to_error("Missing argument for spread operator".to_string()))
-            }
-            result @ _ => result,
-        };
-        self.index += 1;
-        result.into()
-    }
-
-    fn has_next(&self) -> bool {
-        !self.buf.is_empty() || self.index < self.nodes.len()
-    }
-
-    fn queue_len(&self) -> usize {
-        self.buf.len() + self.nodes.len() - self.index
-    }
-}
-
-fn eval_prefix_expression(operator: &Rc<str>, operands: &[Node], environment: &mut Environment) -> Result<Object, EvaluationError> {
-    let mut operand_objects = VecDeque::new();
-    for operand in operands {
-        operand.eval(environment)?.expand_spread(|operand| operand_objects.push_back(operand));
-    }
-    let queued_evaluator = QueuedEvaluator::new(operands, environment);
-    match operator.as_ref() {
-        "+" => plus_operator(queued_evaluator),
-        "-" => minus_operator(queued_evaluator),
-        "*" => multiply_operator(queued_evaluator),
-        "/" => divide_operator(queued_evaluator),
-        "<" => lesser_then_operator(queued_evaluator),
-        ">" => greater_then_operator(queued_evaluator),
-        "=" => equals_operator(queued_evaluator),
-        "!" => not_operator(queued_evaluator),
-        _ => Err(format!("unknown operator '{operator}'").into()),
-    }
-}
-
-
-fn plus_operator(mut queued_evaluator: QueuedEvaluator) -> Result<Object, EvaluationError> {
-    let Some(first) = queued_evaluator.next() else {
-        return Object::Integer(0).into();
-    };
-    if !queued_evaluator.has_next() {
-        return first;
-    }
-    let mut left = first?;
-
-    // while let Some(right) = operands.pop_front() {
-    while let Some(right) = queued_evaluator.next() {
-        left = match (left, right?) {
-            (Object::Integer(left), Object::Integer(right)) => { Object::Integer(left + right).into() }
-            (Object::Float(left), Object::Integer(right)) => Object::Float(left + f64::from(right)).into(),
-            (Object::Integer(left), Object::Float(right)) => Object::Float(f64::from(left) + right).into(),
-            (Object::Float(left), Object::Float(right)) => Object::Float(left + right).into(),
-
-            (Object::String(left), right @ _) => Object::String(format!("{left}{}", right.view()).into()).into(),
-            (left @ _, Object::String(right)) => Object::String(format!("{}{right}", left.view()).into()).into(),
-            (left @ _, right @ _) => return EvaluationError::from(format!("Type mismatch (+ {left} {right})").to_string()).into(),
-        }
-    }
-    Ok(left)
-}
-
-fn minus_operator(mut queued_evaluator: QueuedEvaluator) -> Result<Object, EvaluationError> {
-    let Some(first) = queued_evaluator.next() else {
-        return Object::Integer(0).into();
-    };
-    if !queued_evaluator.has_next() {
-        return match first? {
-            Object::Integer(value) => Object::Integer(0 - value).into(),
-            Object::Float(value) => Object::Float(0. - value).into(),
-            object @ _ => EvaluationError::from(format!("Type mismatch (- {object})")).into(),
-        };
-    }
-    let mut left = first?;
-
-    while let Some(right) = queued_evaluator.next() {
-        left = match (left, right?) {
-            (Object::Integer(left), Object::Integer(right)) => Object::Integer(left - right).into(),
-
-            (Object::Float(left), Object::Integer(right)) => Object::Float(left - f64::from(right)).into(),
-            (Object::Integer(left), Object::Float(right)) => Object::Float(f64::from(left) - right).into(),
-            (Object::Float(left), Object::Float(right)) => Object::Float(left - right).into(),
-
-            (left @ _, right @ _) => return EvaluationError::from(format!("Type mismatch (+ {left} {right})").to_string()).into(),
-        }
-    }
-    Ok(left)
-}
-
-fn multiply_operator(mut queued_evaluator: QueuedEvaluator) -> Result<Object, EvaluationError> {
-    let mut product = Object::Integer(1);
-    while let Some(operand) = queued_evaluator.next() {
-        product = match (product, operand?) {
-            (Object::Integer(left), Object::Integer(right)) => Object::Integer(left * right),
-            (Object::Float(left), Object::Integer(right)) => Object::Float(left * f64::from(right)),
-            (Object::Integer(left), Object::Float(right)) => Object::Float(f64::from(left) * right),
-            (Object::Float(left), Object::Float(right)) => Object::Float(left * right),
-            (left @ _, right @ _) => return EvaluationError::from(format!("Type mismatch (* {left} {right})").to_string()).into(),
-        };
-    }
-    product.into()
-}
-
-fn divide_operator(mut queued_evaluator: QueuedEvaluator) -> Result<Object, EvaluationError> {
-    let Some(first) = queued_evaluator.next() else {
-        return Object::Undefined.into();
-    };
-    if !queued_evaluator.has_next() {
-        return match first? {
-            Object::Integer(0)   => Object::Undefined.into(),
-            Object::Float(value) if value == 0. => Object::Undefined.into(),
-            Object::Integer(value) => Object::Float(1. / f64::from(value)).into(),
-            Object::Float(value) => Object::Float(1. / value).into(),
-            object @ _ => EvaluationError::from(format!("Type mismatch (/ {object})").to_string()).into(),
-        };
-    }
-    let mut result = first?;
-
-    // for operand in operands {
-    while let Some(operand) = queued_evaluator.next() {
-        result = match (result, operand?) {
-            (_, Object::Integer(0)) => Object::Undefined.into(),
-            (_, Object::Float(value)) if value == 0. => Object::Undefined.into(),
-            (Object::Integer(left), Object::Integer(right)) => no_truncating_division(left, right),
-            (Object::Float(left), Object::Integer(right)) => Object::Float(left / f64::from(right)),
-            (Object::Integer(left), Object::Float(right)) => Object::Float(f64::from(left) / right),
-            (Object::Float(left), Object::Float(right)) => Object::Float(left / right),
-            (left @ _, right @ _) => return Err(format!("Type mismatch (/ {left} {right})").into()),
-        }
-    }
-
-    result.into()
-}
-
-fn no_truncating_division(left: i32, right: i32) -> Object {
-    if left % right != 0 {
-        Object::Float(f64::from(left) / f64::from(right))
-    } else {
-        Object::Integer(left / right)
-    }
-}
-
-fn lesser_then_operator(mut queued_evaluator: QueuedEvaluator) -> Result<Object, EvaluationError> {
-    let Some(first) = queued_evaluator.next() else {
-        return Object::Boolean(false).into();
-    };
-    if !queued_evaluator.has_next() {
-        return Object::Boolean(true).into();
-    }
-    let mut left = first?;
-    let mut result = true;
-
-    while let Some(operand) = queued_evaluator.next() {
-        let right = operand?;
-        result = match (&left, &right) {
-            (Object::Integer(left), Object::Integer(right)) => left < right,
-            (Object::Float(left), Object::Integer(right)) => *left < f64::from(*right),
-            (Object::Integer(left), Object::Float(right)) => f64::from(*left) < *right,
-            (Object::Float(left), Object::Float(right)) => left < right,
-            (left @ _, right @ _) => return Err(format!("Type mismatch (< {left} {right})").into()),
-        };
-        if !result {
-            return Object::Boolean(false).into();
-        }
-        left = right;
-    }
-    Object::Boolean(result).into()
-}
-
-fn greater_then_operator(mut queued_evaluator: QueuedEvaluator) -> Result<Object, EvaluationError> {
-    let Some(first) = queued_evaluator.next() else {
-        return Object::Boolean(false).into();
-    };
-    if !queued_evaluator.has_next() {
-        return Object::Boolean(true).into();
-    }
-    let mut left = first?;
-    let mut result = true;
-
-    while let Some(operand) = queued_evaluator.next() {
-        let right = operand?;
-        result = match (&left, &right) {
-            (Object::Integer(left), Object::Integer(right)) => left > right,
-            (Object::Float(left), Object::Integer(right)) => *left > f64::from(*right),
-            (Object::Integer(left), Object::Float(right)) => f64::from(*left) > *right,
-            (Object::Float(left), Object::Float(right)) => left > right,
-            (left @ _, right @ _) => return Err(format!("Type mismatch (> {left} {right})").into()),
-        };
-        if !result {
-            return Object::Boolean(false).into();
-        }
-        left = right;
-    }
-    Object::Boolean(result).into()
-}
-
-fn equals_operator(mut queued_evaluator: QueuedEvaluator) -> Result<Object, EvaluationError> {
-
-    let Some(first) = queued_evaluator.next() else {
-        return Object::Boolean(false).into();
-    };
-    if !queued_evaluator.has_next() {
-        return Object::Boolean(true).into();
-    }
-    let mut left = first?;
-    let mut result = true;
-
-    // for operand in operands {
-    while let Some(operand) = queued_evaluator.next() {
-        let right = operand?;
-        result = match (&left, &right) {
-            (Object::Integer(left), Object::Integer(right)) => left == right,
-            (Object::Float(left), Object::Integer(right)) => *left == f64::from(*right),
-            (Object::Integer(left), Object::Float(right)) => f64::from(*left) == *right,
-            (Object::Float(left), Object::Float(right)) => left == right,
-            (Object::String(left), Object::String(right)) => left == right,
-            (left @ _, right @ _) => return Err(format!("Type mismatch (= {left} {right})").into()),
-        };
-        if !result {
-            return Object::Boolean(false).into();
-        }
-        left = right;
-    }
-    Object::Boolean(result).into()
-}
-
-fn not_operator(mut queued_evaluator: QueuedEvaluator) -> Result<Object, EvaluationError> {
-    if let Some(object) = queued_evaluator.next() {
-        if queued_evaluator.has_next() {
-            return Err(format!("Operator ! expects only 1 operand found at least {}", queued_evaluator.queue_len() + 1).into());
-        }
-        Object::Boolean(!is_truthy(&object?))
-    } else { Object::Boolean(true) }.into()
-}
-
-fn is_truthy(object: &Object) -> bool {
-    match object {
-        Object::Boolean(true) => true,
-        Object::Boolean(false)
-        | Object::Integer(0) => false,
-        Object::Float(value) => *value != 0.0,
-        _ => true,
-    }
-}
-
-impl<T> From<Object> for Result<Object, T> {
-    fn from(value: Object) -> Self {
-        Ok(value)
-    }
 }

@@ -19,7 +19,6 @@ mod parser_test {
 
         for (input, expected_identifier, expected_value) in tests {
             // let lexer = Lexer::new(input);
-            println!("{}", input);
             let lexer = Lexer::from(input);
             let parser = Parser::from(lexer);
 
@@ -105,7 +104,7 @@ mod parser_test {
 
             assert_eq!(1, program.nodes.len(), "Expected 1 node in program for input: {input}");
 
-            let Expression::Prefix(operator, operands) = &program.nodes[0].expression else {
+            let Expression::Operator(operator, operands) = &program.nodes[0].expression else {
                 panic!("Expected prefix-expression got={:?}", program.nodes[0].expression);
             };
 
@@ -276,12 +275,16 @@ mod parser_test {
 
         assert_eq!(1, program.nodes.len(), "Expected 1 node in program for input: {input}");
 
-        let Expression::Spread(operand) = &program.nodes[0].expression else {
-            panic!("Expected index-expression got={:?}", program.nodes[0].expression);
+        let Expression::ExpressionLiteral(expression) = &program.nodes[0].expression else {
+            panic!("Expected expression-literal got={:?}", program.nodes[0].expression);
+        };
+
+        let Expression::Spread(operand) = &expression[0].expression else {
+            panic!("Expected spread-expression got={:?}", expression[0].expression);
         };
 
         let Expression::Array(ref nodes) = operand.expression else {
-            panic!("Expected array-expression got={:?}", program.nodes[0].expression);
+            panic!("Expected array-expression got={:?}", expression[0].expression);
         };
 
         assert_eq!(3, nodes.len(), "input {input}");
@@ -298,12 +301,16 @@ mod parser_test {
 
         assert_eq!(1, program.nodes.len(), "Expected 1 node in program for input: {input}");
 
-        let Expression::Spread(operand) = &program.nodes[0].expression else {
-            panic!("Expected index-expression got={:?}", program.nodes[0].expression);
+        let Expression::ExpressionLiteral(expression) = &program.nodes[0].expression else {
+            panic!("Expected expression-literal got={:?}", program.nodes[0].expression);
+        };
+
+        let Expression::Spread(operand) = &expression[0].expression else {
+            panic!("Expected spread-expression got={:?}", expression[0].expression);
         };
 
         let Expression::Identifier(ref identifier) = operand.expression else {
-            panic!("Expected identifier-expression got={:?}", program.nodes[0].expression);
+            panic!("Expected identifier-expression got={:?}", expression[0].expression);
         };
 
         assert_eq!("foobar", identifier.as_ref());
@@ -322,7 +329,7 @@ mod parser_test {
             panic!("Expected if-expression with no alternative got={:?}", program.nodes[0].expression);
         };
 
-        let Expression::Prefix(ref prefix, ref operands) = condition.expression else {
+        let Expression::Operator(ref prefix, ref operands) = condition.expression else {
             panic!("Expected condition got {condition:?}");
         };
 
@@ -349,7 +356,7 @@ mod parser_test {
             panic!("Expected if-expression with alternative got={:?}", program.nodes[0].expression);
         };
 
-        let Expression::Prefix(ref prefix, ref operands) = condition.expression else {
+        let Expression::Operator(ref prefix, ref operands) = condition.expression else {
             panic!("Expected condition got {condition:?}");
         };
         assert_eq!("<", prefix.as_ref());
@@ -384,7 +391,7 @@ mod parser_test {
 
         let (ref condition, ref consequence) = branches[0];
 
-        let Expression::Prefix(ref prefix, ref operands) = condition.expression else {
+        let Expression::Operator(ref prefix, ref operands) = condition.expression else {
             panic!("Expected condition got {condition:?}");
         };
         assert_eq!("<", prefix.as_ref());
@@ -429,7 +436,7 @@ mod parser_test {
             panic!("Expected if-expression with alternative got={:?}", program.nodes[0].expression);
         };
 
-        let Expression::Prefix(ref prefix, ref operands) = condition.expression else {
+        let Expression::Operator(ref prefix, ref operands) = condition.expression else {
             panic!("Expected condition got {condition:?}");
         };
 
@@ -518,7 +525,7 @@ mod parser_test {
 
         assert!(vararg.is_none());
 
-        let Expression::Prefix(operator, operands) = &body.expression else {
+        let Expression::Operator(operator, operands) = &body.expression else {
             panic!("Expected prefix-expression got={:?}", body);
         };
 
@@ -567,7 +574,7 @@ mod parser_test {
 
         assert_eq!("c", identifier.as_ref());
 
-        let Expression::Prefix(operator, operands) = &body.expression else {
+        let Expression::Operator(operator, operands) = &body.expression else {
             panic!("Expected prefix-expression got={:?}", body);
         };
 

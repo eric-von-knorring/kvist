@@ -14,7 +14,7 @@ pub enum Expression {
     String(Rc<str>),
     Array(Box<[Node]>),
     Index(Box<Node>, Box<Node>),
-    Prefix(Rc<str>, Box<[Node]>),
+    Operator(Rc<str>, Box<[Node]>),
     If(Box<Node>, Box<Node>, Option<Box<Node>>),
     When(Box<[(Box<Node>, Box<Node>)]>),
     While(Box<Node>, Option<Box<Node>>),

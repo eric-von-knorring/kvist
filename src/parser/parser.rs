@@ -426,7 +426,7 @@ impl Parser<'_> {
         }
 
         Node {
-            expression: Expression::Prefix(current.literal.clone(), operands.into()),
+            expression: Expression::Operator(current.literal.clone(), operands.into()),
             token: current,
         }.into()
     }

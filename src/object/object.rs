@@ -35,6 +35,23 @@ impl Object {
             object @ _ => object.into(),
         }
     }
+
+    // pub fn is_truthy(object: &Object) -> bool {
+    pub fn is_truthy(&self) -> bool {
+        match self {
+            Object::Boolean(true) => true,
+            Object::Boolean(false)
+            | Object::Integer(0) => false,
+            Object::Float(value) => *value != 0.0,
+            _ => true,
+        }
+    }
+}
+
+impl<T> From<Object> for Result<Object, T> {
+    fn from(value: Object) -> Self {
+        Ok(value)
+    }
 }
 
 pub(crate) trait Viewable {
