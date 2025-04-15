@@ -1,17 +1,11 @@
-use std::collections::VecDeque;
-use std::rc::Rc;
 use crate::ast::ast::Node;
 use crate::evaluator::error::EvaluationError;
-use crate::evaluator::evaluator::Eval;
 use crate::evaluator::queued_evaluator::QueuedEvaluator;
 use crate::object::environment::Environment;
 use crate::object::object::{Object, Viewable};
+use std::rc::Rc;
 
 pub(crate) fn eval_operator_expression(operator: &Rc<str>, operands: &[Node], environment: &mut Environment) -> Result<Object, EvaluationError> {
-    let mut operand_objects = VecDeque::new();
-    for operand in operands {
-        operand.eval(environment)?.expand_spread(|operand| operand_objects.push_back(operand));
-    }
     let queued_evaluator = QueuedEvaluator::new(operands, environment);
     match operator.as_ref() {
         "+" => plus_operator(queued_evaluator),
