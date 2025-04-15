@@ -18,8 +18,8 @@ pub(crate) fn eval_operator_expression(operator: &Rc<str>, operands: &[Node], en
         "-" => minus_operator(queued_evaluator),
         "*" => multiply_operator(queued_evaluator),
         "/" => divide_operator(queued_evaluator),
-        "<" => lesser_then_operator(queued_evaluator),
-        ">" => greater_then_operator(queued_evaluator),
+        "<" => lesser_than_operator(queued_evaluator),
+        ">" => greater_than_operator(queued_evaluator),
         "=" => equals_operator(queued_evaluator),
         "!" => not_operator(queued_evaluator),
         _ => Err(format!("unknown operator '{operator}'").into()),
@@ -132,7 +132,7 @@ fn no_truncating_division(left: i32, right: i32) -> Object {
     }
 }
 
-fn lesser_then_operator(mut queued_evaluator: QueuedEvaluator) -> Result<Object, EvaluationError> {
+fn lesser_than_operator(mut queued_evaluator: QueuedEvaluator) -> Result<Object, EvaluationError> {
     let Some(first) = queued_evaluator.next() else {
         return Object::Boolean(false).into();
     };
@@ -159,7 +159,7 @@ fn lesser_then_operator(mut queued_evaluator: QueuedEvaluator) -> Result<Object,
     Object::Boolean(result).into()
 }
 
-fn greater_then_operator(mut queued_evaluator: QueuedEvaluator) -> Result<Object, EvaluationError> {
+fn greater_than_operator(mut queued_evaluator: QueuedEvaluator) -> Result<Object, EvaluationError> {
     let Some(first) = queued_evaluator.next() else {
         return Object::Boolean(false).into();
     };
