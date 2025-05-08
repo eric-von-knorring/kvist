@@ -128,5 +128,6 @@ cargo install --path .
     (push ["one" "two" "three"] "four") # Returns a new array with the second paramter added to the end
     (parse_int "123") # Parses string an returns an integer
     (os_execute "ls" "-l" "-a") # Runs a system command and passes through stdin, stdout and stderr 
+    (env "HOME") # Gets the value of an environment variable with the given name
     (exit 0) # Exits the process with a given status code
 ```
