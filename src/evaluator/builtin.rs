@@ -3,6 +3,7 @@ use std::io::{BufRead, BufReader};
 use std::process::{Command, Stdio};
 use std::rc::Rc;
 use std::{env, io};
+use std::env::VarError;
 
 macro_rules! builtins {
    ($($name:ident),*$(,)?) => {
@@ -26,7 +27,7 @@ builtins! {
     push,
     parse_int,
     os_execute,
-    env,
+    get_env,
     exit,
 }
 
@@ -185,15 +186,18 @@ fn os_execute(args: Box<[Object]>) -> Result<Object, String> {
     Ok(result)
 }
 
-fn env(args: Box<[Object]>) -> Result<Object, String> {
+fn get_env(args: Box<[Object]>) -> Result<Object, String> {
     if args.len() != 1 {
         return Err(format!("env: wrong number of arguments. got={}, want=1", args.len()));
     }
 
     match &args[0] {
         Object::String(string) => {
-            env::var(string.as_ref()).map(|result| Object::String(result.into()))
-                .map_err(|err| format!("env: Invalid environment variable '{}': {}", string, err))
+            match env::var(string.as_ref()) {
+                Ok(result) => Object::String(result.into()).into(),
+                Err(VarError::NotPresent) => Object::Unit.into(),
+                Err(err) => Err(format!("env: Invalid environment variable '{}': {}", string, err)),
+            }
         },
         object @ _ => Err(format!("env: Expected String was {}", object))
     }
