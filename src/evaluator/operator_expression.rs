@@ -200,6 +200,8 @@ fn equals_operator(mut queued_evaluator: QueuedEvaluator) -> Result<Object, Eval
             (Object::Integer(left), Object::Float(right)) => f64::from(*left) == *right,
             (Object::Float(left), Object::Float(right)) => left == right,
             (Object::String(left), Object::String(right)) => left == right,
+            (Object::Unit, Object::Unit) => true,
+            (Object::Unit, _) | (_, Object::Unit) => false,
             (left @ _, right @ _) => return Err(format!("Type mismatch (= {left} {right})").into()),
         };
         if !result {
